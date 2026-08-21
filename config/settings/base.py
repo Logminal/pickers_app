@@ -105,6 +105,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Telegram Bot API (уведомления, п.6 ТЗ)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '')
 
 # Открытый вопрос №3 из ТЗ: лимит одновременно забронированных заявок у одного
 # сборщика, чтобы не набирал больше, чем может выполнить. Значение по умолчанию —

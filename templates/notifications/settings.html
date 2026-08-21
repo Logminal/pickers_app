@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Уведомления</h1>
+
+<div class="content-card">
+    <h2 class="h6 mb-3">Telegram</h2>
+    {% if telegram_connected %}
+        <span class="status-pill status-success">Подключено ✅</span>
+        <p class="text-muted small mt-2 mb-0">Уведомления от платформы приходят вам в Telegram.</p>
+    {% else %}
+        <p class="text-muted small mb-3">
+            Подключите Telegram, чтобы получать уведомления о заявках, отчётах, изменениях анкеты и выплатах —
+            без этого приложение может только записывать их в историю ниже, но не присылать вам.
+        </p>
+        {% if deep_link %}
+            <a href="{{ deep_link }}" target="_blank" class="btn btn-primary">Подключить в Telegram</a>
+            <p class="text-muted small mt-2 mb-0">Откроется бот <strong>@{{ bot_username }}</strong> — нажмите «Запустить» (Start).</p>
+        {% else %}
+            <p class="text-danger small mb-0">Бот пока не настроен администратором.</p>
+        {% endif %}
+    {% endif %}
+</div>
+
+<div class="content-card">
+    <h2 class="h6 mb-3">Последние уведомления</h2>
+    {% if recent %}
+    <div class="table-responsive">
+    <table class="table table-sm mb-0">
+        <thead><tr><th>Когда</th><th>Событие</th><th>Сообщение</th><th>Статус</th></tr></thead>
+        <tbody>
+        {% for n in recent %}
+            <tr>
+                <td class="text-muted small">{{ n.created_at }}</td>
+                <td class="small">{{ n.event_type }}</td>
+                <td class="small">{{ n.message }}</td>
+                <td><span class="status-pill {{ n.status|status_class }}">{{ n.get_status_display }}</span></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Пока нет уведомлений.</p>
+    {% endif %}
+</div>
+{% endblock %}

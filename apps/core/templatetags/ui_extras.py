@@ -28,6 +28,9 @@ STATUS_COLOR_MAP = {
     'pending': 'status-warning',
     'approved': 'status-success',
     'completed': 'status-success',
+    # NotificationLog.Status
+    'sent': 'status-success',
+    'failed': 'status-danger',
 }
 
 

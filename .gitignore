@@ -7,3 +7,4 @@ media/
 private_storage/
 staticfiles/
 .idea/
+.telegram_offset

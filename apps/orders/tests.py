@@ -201,3 +201,89 @@ class AnalyticsTotalClosedValueTests(TestCase):
         response = self.client.get('/manager/analytics/')
 
         self.assertEqual(response.context['total_closed_value'], Decimal('12500'))
+
+
+class NewOrderNotificationTests(TestCase):
+    """Новая подходящая заявка (п.6 ТЗ) — уведомление подтверждённым сборщикам при создании."""
+
+    def setUp(self):
+        from apps.dictionaries.models import Specialization
+
+        self.manager = User.objects.create_user(username='manager', password='x', role=User.Role.MANAGER)
+        self.ft = FurnitureType.objects.create(name='Кухня')
+        self.spec = Specialization.objects.create(name='Кухни')
+
+    def _make_collector(self, username, status, specializations=()):
+        user = User.objects.create_user(username=username, password='x', role=User.Role.COLLECTOR)
+        profile = CollectorProfile.objects.create(
+            user=user, full_name='Тест', birth_date='1990-01-01', birth_place='М', status=status,
+        )
+        if specializations:
+            profile.specializations.set(specializations)
+        return user
+
+    def test_confirmed_collector_with_matching_specialization_notified(self):
+        from apps.notifications.models import NotificationLog
+
+        collector = self._make_collector('c1', CollectorProfile.Status.CONFIRMED, [self.spec])
+        self.client.force_login(self.manager)
+
+        self.client.post('/manager/orders/create/', {
+            'furniture_type': self.ft.id, 'address': 'ул. Тест, 1',
+            'scheduled_at': '2026-06-01T10:00', 'deadline_at': '2026-06-02T10:00',
+            'urgency': 'normal', 'price': '5000', 'required_specialization': self.spec.id,
+        })
+
+        self.assertTrue(
+            NotificationLog.objects.filter(user=collector, event_type='new_matching_order').exists()
+        )
+
+    def test_collector_with_different_specialization_not_notified(self):
+        from apps.dictionaries.models import Specialization
+        from apps.notifications.models import NotificationLog
+
+        other_spec = Specialization.objects.create(name='Шкафы-купе')
+        collector = self._make_collector('c2', CollectorProfile.Status.CONFIRMED, [other_spec])
+        self.client.force_login(self.manager)
+
+        self.client.post('/manager/orders/create/', {
+            'furniture_type': self.ft.id, 'address': 'ул. Тест, 2',
+            'scheduled_at': '2026-06-01T10:00', 'deadline_at': '2026-06-02T10:00',
+            'urgency': 'normal', 'price': '5000', 'required_specialization': self.spec.id,
+        })
+
+        self.assertFalse(
+            NotificationLog.objects.filter(user=collector, event_type='new_matching_order').exists()
+        )
+
+    def test_unconfirmed_collector_not_notified(self):
+        from apps.notifications.models import NotificationLog
+
+        collector = self._make_collector('c3', CollectorProfile.Status.UNDER_REVIEW, [self.spec])
+        self.client.force_login(self.manager)
+
+        self.client.post('/manager/orders/create/', {
+            'furniture_type': self.ft.id, 'address': 'ул. Тест, 3',
+            'scheduled_at': '2026-06-01T10:00', 'deadline_at': '2026-06-02T10:00',
+            'urgency': 'normal', 'price': '5000', 'required_specialization': self.spec.id,
+        })
+
+        self.assertFalse(
+            NotificationLog.objects.filter(user=collector, event_type='new_matching_order').exists()
+        )
+
+    def test_order_without_specialization_requirement_notifies_all_confirmed(self):
+        from apps.notifications.models import NotificationLog
+
+        collector = self._make_collector('c4', CollectorProfile.Status.CONFIRMED)
+        self.client.force_login(self.manager)
+
+        self.client.post('/manager/orders/create/', {
+            'furniture_type': self.ft.id, 'address': 'ул. Тест, 4',
+            'scheduled_at': '2026-06-01T10:00', 'deadline_at': '2026-06-02T10:00',
+            'urgency': 'normal', 'price': '5000',
+        })
+
+        self.assertTrue(
+            NotificationLog.objects.filter(user=collector, event_type='new_matching_order').exists()
+        )

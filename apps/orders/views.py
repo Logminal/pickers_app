@@ -109,7 +109,25 @@ class OrderCreateView(ManagerRequiredMixin, CreateView):
         form.instance.created_by = self.request.user
         form.instance.status = Order.Status.PUBLISHED
         messages.success(self.request, 'Заявка создана и опубликована.')
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        self._notify_matching_collectors(self.object)
+        return response
+
+    @staticmethod
+    def _notify_matching_collectors(order):
+        """Новая подходящая заявка (п.6 ТЗ) — уведомляем подтверждённых сборщиков,
+        чья специализация совпадает (или заявка без требования к специализации)."""
+        from apps.notifications.services import notify
+
+        collectors = CollectorProfile.objects.filter(status=CollectorProfile.Status.CONFIRMED)
+        if order.required_specialization_id:
+            collectors = collectors.filter(specializations=order.required_specialization_id)
+
+        for profile in collectors.select_related('user'):
+            notify(
+                profile.user, event_type='new_matching_order',
+                message=f'Новая заявка #{order.pk} — {order.furniture_type}, {order.address}, {order.price} ₽.',
+            )
 
 
 class ManagerOrderListView(ManagerRequiredMixin, ListView):
