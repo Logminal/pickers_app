@@ -26,6 +26,30 @@
         </tr>
         {% if order.collector_payout_amount is not None %}
         <tr>
+            <th>Сумма изделия</th>
+            <td>{{ order.bitrix_item_amount }} ₽</td>
+        </tr>
+        <tr>
+            <th>Процент сборки (цеха), %</th>
+            <td>{{ order.bitrix_assembly_percent }}% ({{ order.bitrix_assembly_amount }} ₽)</td>
+        </tr>
+        <tr>
+            <th>Монтаж</th>
+            <td>{{ order.bitrix_installation_amount }} ₽</td>
+        </tr>
+        <tr>
+            <th>Доп. услуги</th>
+            <td>{{ order.bitrix_additional_services_amount }} ₽</td>
+        </tr>
+        <tr>
+            <th>Подъём</th>
+            <td>{{ order.bitrix_lift_amount }} ₽</td>
+        </tr>
+        <tr>
+            <th>Доставка</th>
+            <td>{{ order.bitrix_delivery_amount }} ₽</td>
+        </tr>
+        <tr>
             <th>К выплате сборщику</th>
             <td><strong>{{ order.collector_payout_total }} ₽</strong></td>
         </tr>

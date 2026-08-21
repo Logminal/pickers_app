@@ -341,3 +341,15 @@ class BitrixPayoutCalculationTests(TestCase):
         AdditionalWork.objects.create(order=order, description='Доп. работа на месте', price=1500)
 
         self.assertEqual(order.collector_payout_total, 12000 + 5000 + 2000 + 1500)
+
+    def test_zero_assembly_percent_does_not_contribute_to_payout(self):
+        """Процент сборки = 0% -> в ЗП монтажника идёт только монтаж + доп. услуги,
+        без вклада от суммы изделия."""
+        order = self._make_order(
+            bitrix_item_amount=80000, bitrix_assembly_percent=0,
+            bitrix_installation_amount=5000, bitrix_additional_services_amount=2000,
+            bitrix_lift_amount=1000, bitrix_delivery_amount=2500,
+        )
+
+        self.assertEqual(order.bitrix_assembly_amount, 0)
+        self.assertEqual(order.collector_payout_amount, 5000 + 2000)
