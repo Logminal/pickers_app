@@ -18,6 +18,7 @@ urlpatterns = [
         name='service_worker',
     ),
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'icons/icon-192.png', permanent=True)),
+    path('legal/offer/', TemplateView.as_view(template_name='legal/offer.html'), name='offer'),
 
     path('', include('apps.orders.urls')),
     path('', include('apps.reports.urls')),

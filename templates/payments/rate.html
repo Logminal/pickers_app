@@ -14,7 +14,7 @@
 
         <div class="mb-3">
             <label class="form-label">Оценка</label>
-            <div class="d-flex gap-3">
+            <div class="d-flex flex-wrap gap-3">
                 {% for radio in form.score %}
                     <label class="form-check-label d-flex align-items-center gap-1">
                         {{ radio.tag }} {{ radio.choice_label }}

@@ -81,7 +81,7 @@
                     <a href="{% url 'manager_order_detail' review.order_id %}" class="text-muted small">Заявка #{{ review.order_id }}</a>
                 </div>
                 <p class="mb-1">{{ review.comment }}</p>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     {% if review.had_complaint %}<span class="status-pill status-danger">Была рекламация</span>{% endif %}
                     {% if not review.deadline_met %}<span class="status-pill status-warning">Срок не соблюдён</span>{% endif %}
                     <span class="text-muted small">{{ review.created_at }}</span>

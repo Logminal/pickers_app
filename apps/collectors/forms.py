@@ -37,6 +37,9 @@ class CollectorRegistrationForm(forms.Form):
     inn = forms.CharField(label='ИНН (для самозанятых)', required=False)
     ogrnip = forms.CharField(label='ОГРНИП (для ИП)', required=False)
     personal_data_consent = forms.BooleanField(label='Согласен на обработку персональных данных')
+    offer_accepted = forms.BooleanField(
+        label='Принимаю условия оферты', error_messages={'required': 'Необходимо принять условия оферты'},
+    )
 
     # Реквизиты
     payment_method = forms.ChoiceField(label='Способ получения оплаты', choices=PaymentDetails.Method.choices)

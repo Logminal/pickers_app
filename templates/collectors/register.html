@@ -11,7 +11,12 @@
                 {% if field.field.widget.input_type == 'checkbox' %}
                     <div class="form-check">
                         {{ field }}
-                        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <label class="form-check-label" for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                            {% if field.name == 'offer_accepted' %}
+                                (<a href="{% url 'offer' %}" target="_blank">читать оферту</a>)
+                            {% endif %}
+                        </label>
                     </div>
                 {% else %}
                     <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
