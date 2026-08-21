@@ -1,8 +1,12 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from .models import NotificationLog
+from .services import notify, notify_staff
 from .views import TELEGRAM_LINK_MAX_AGE, TELEGRAM_LINK_SALT
 
 User = get_user_model()
@@ -76,3 +80,70 @@ class TelegramLinkSigningTests(TestCase):
         payload = signing.dumps(self.user.pk, salt=TELEGRAM_LINK_SALT)
         resolved = signing.loads(payload, salt=TELEGRAM_LINK_SALT, max_age=TELEGRAM_LINK_MAX_AGE)
         self.assertEqual(resolved, self.user.pk)
+
+
+@override_settings(TELEGRAM_BOT_TOKEN='fake-token-for-tests')
+class StaffGroupNotificationTests(TestCase):
+    """Уведомления менеджерам/админам — в общий чат, без дублирования по числу менеджеров."""
+
+    def setUp(self):
+        self.managers = [
+            User.objects.create_user(username=f'm{i}', password='x', role=User.Role.MANAGER)
+            for i in range(3)
+        ]
+        self.admin = User.objects.create_user(username='a1', password='x', role=User.Role.ADMIN)
+        self.collector = User.objects.create_user(username='c1', password='x', role=User.Role.COLLECTOR)
+
+    @override_settings(TELEGRAM_STAFF_GROUP_CHAT_ID='-100200300')
+    @patch('apps.notifications.services.requests.post')
+    def test_notify_staff_sends_single_message_to_group(self, mock_post):
+        mock_post.return_value.raise_for_status = lambda: None
+
+        logs = notify_staff('some_event', 'Текст')
+
+        self.assertEqual(len(logs), 1)
+        self.assertIsNone(logs[0].user)
+        self.assertEqual(mock_post.call_count, 1)
+        sent_chat_id = mock_post.call_args.kwargs['json']['chat_id']
+        self.assertEqual(sent_chat_id, '-100200300')
+
+    @override_settings(TELEGRAM_STAFF_GROUP_CHAT_ID='')
+    @patch('apps.notifications.services.requests.post')
+    def test_notify_staff_falls_back_to_individual_when_no_group_configured(self, mock_post):
+        mock_post.return_value.raise_for_status = lambda: None
+
+        logs = notify_staff('some_event', 'Текст')
+
+        # 3 менеджера + 1 админ = 4 индивидуальных лога
+        self.assertEqual(len(logs), 4)
+        self.assertTrue(all(log.user is not None for log in logs))
+
+    @override_settings(TELEGRAM_STAFF_GROUP_CHAT_ID='-100200300')
+    @patch('apps.notifications.services.requests.post')
+    def test_individual_notify_to_manager_redirects_to_group(self, mock_post):
+        """notify(manager, ...) в обычных местах кода (book_order и т.п.) должен
+        автоматически уйти в общий чат, если он настроен — без правок вызывающего кода."""
+        mock_post.return_value.raise_for_status = lambda: None
+
+        log = notify(self.managers[0], 'order_booked', 'Текст')
+
+        sent_chat_id = mock_post.call_args.kwargs['json']['chat_id']
+        self.assertEqual(sent_chat_id, '-100200300')
+        self.assertEqual(log.user, self.managers[0])  # лог всё ещё привязан к менеджеру
+
+    @override_settings(TELEGRAM_STAFF_GROUP_CHAT_ID='-100200300')
+    @patch('apps.notifications.services.requests.post')
+    def test_collector_notification_not_redirected_to_staff_group(self, mock_post):
+        self.collector.telegram_chat_id = '555'
+        self.collector.save()
+        mock_post.return_value.raise_for_status = lambda: None
+
+        notify(self.collector, 'report_accepted', 'Текст')
+
+        sent_chat_id = mock_post.call_args.kwargs['json']['chat_id']
+        self.assertEqual(sent_chat_id, '555')
+
+    @override_settings(TELEGRAM_STAFF_GROUP_CHAT_ID='-100200300')
+    def test_collector_without_chat_id_fails_not_redirected(self):
+        log = notify(self.collector, 'report_accepted', 'Текст')
+        self.assertEqual(log.status, NotificationLog.Status.FAILED)

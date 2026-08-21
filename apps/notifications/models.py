@@ -13,7 +13,9 @@ class NotificationLog(models.Model):
         FAILED = 'failed', 'Ошибка'
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications', verbose_name='Пользователь',
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='notifications', verbose_name='Пользователь',
+        help_text='Пусто — уведомление адресовано общему чату менеджеров/админов, не конкретному человеку',
     )
     channel = models.CharField('Канал', max_length=20, choices=Channel.choices, default=Channel.TELEGRAM)
     event_type = models.CharField('Тип события', max_length=100)
@@ -28,4 +30,4 @@ class NotificationLog(models.Model):
         verbose_name_plural = 'Уведомления'
 
     def __str__(self):
-        return f'{self.event_type} -> {self.user} [{self.status}]'
+        return f'{self.event_type} -> {self.user or "общий чат менеджеров"} [{self.status}]'

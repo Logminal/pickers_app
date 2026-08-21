@@ -69,6 +69,7 @@ class Command(BaseCommand):
             return
 
         chat_id = message['chat']['id']
+        chat_type = message['chat'].get('type', 'private')
         text = message['text'].strip()
 
         if text.startswith('/start'):
@@ -81,11 +82,15 @@ class Command(BaseCommand):
                     'Привет! Чтобы подключить уведомления, откройте ссылку в личном кабинете на сайте '
                     '(раздел «Уведомления») — она приведёт сюда с готовой командой.',
                 )
+        elif text.startswith('/id'):
+            # Быстрый способ узнать chat_id — свой или группового чата (например, чтобы
+            # завести общий чат менеджеров и указать его id вручную через Django Admin).
+            self._send(chat_id, f'chat_id этого чата ({chat_type}): {chat_id}')
         else:
             self._send(
                 chat_id,
                 'Этот бот только присылает уведомления от платформы «Сборка мебели». '
-                'Настройки — в личном кабинете на сайте, раздел «Уведомления».',
+                'Команды: /start — подключить уведомления, /id — узнать chat_id этого чата.',
             )
 
     def _link_account(self, chat_id, payload):

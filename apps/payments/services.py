@@ -1,13 +1,10 @@
-from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from apps.notifications.services import notify
+from apps.notifications.services import notify, notify_staff
 from apps.orders.models import Order
 
 from .models import PaymentRecord, Rating, WithdrawalRequest
-
-User = get_user_model()
 
 
 @transaction.atomic
@@ -84,16 +81,15 @@ def create_withdrawal_request(collector, method: str, requisite: str = '', comme
         message=f'Заявка на выплату {total} ₽ принята. Ожидайте звонка для уточнения деталей.',
     )
 
-    for staff_user in User.objects.filter(role__in=[User.Role.MANAGER, User.Role.ADMIN]):
-        profile = getattr(collector, 'collector_profile', None)
-        name = profile.full_name if profile else str(collector)
-        notify(
-            staff_user, event_type='withdrawal_requested_staff',
-            message=(
-                f'Сборщик {name} ({collector.phone or "телефон не указан"}) запросил выплату '
-                f'{total} ₽ — {request_obj.get_method_display()}. Нужно созвониться.'
-            ),
-        )
+    profile = getattr(collector, 'collector_profile', None)
+    name = profile.full_name if profile else str(collector)
+    notify_staff(
+        event_type='withdrawal_requested_staff',
+        message=(
+            f'Сборщик {name} ({collector.phone or "телефон не указан"}) запросил выплату '
+            f'{total} ₽ — {request_obj.get_method_display()}. Нужно созвониться.'
+        ),
+    )
 
     return request_obj
 
