@@ -1,14 +1,18 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Фотоотчёт по заявке #{{ order.pk }}{% endblock %}
 {% block content %}
 <h1 class="h4 mb-4">Фотоотчёт по заявке #{{ order.pk }}</h1>
+
+<div id="offline-banner" class="alert alert-info d-none"></div>
+<p class="text-muted small">📶 Плохая связь на объекте? Заполните форму как обычно — если отправить не получится, отчёт сохранится на телефоне и уйдёт сам, когда связь появится.</p>
 
 {% if not form.fields %}
     <div class="alert alert-warning">
         Для этого типа мебели не настроен шаблон слотов фото. Обратитесь к администратору.
     </div>
 {% else %}
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" data-offline-report-form data-order-id="{{ order.pk }}">
     {% csrf_token %}
 
     <div class="content-card">
@@ -56,5 +60,6 @@
 
     <button type="submit" class="btn btn-primary">Отправить на проверку</button>
 </form>
+<script src="{% static 'js/offline-report.js' %}"></script>
 {% endif %}
 {% endblock %}
