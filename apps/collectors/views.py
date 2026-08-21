@@ -3,7 +3,6 @@ import mimetypes
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Avg
 from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
@@ -65,7 +64,10 @@ class CollectorProfileDetailView(ManagerRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         ratings = Rating.objects.filter(collector=self.object.user).select_related('order').order_by('-created_at')
         context['ratings'] = ratings
-        context['average_score'] = ratings.aggregate(avg=Avg('score'))['avg']
+        # Единый источник правды — CollectorProfile.average_rating/.ratings_count
+        # (используются везде: списки заявок, аналитика, уведомления). Не считаем
+        # тут заново отдельной агрегацией, чтобы значения не могли разойтись.
+        context['average_score'] = self.object.average_rating
         context['orders'] = self.object.user.booked_orders.order_by('-created_at')[:20]
         return context
 
