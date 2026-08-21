@@ -61,7 +61,7 @@
                 <td>{{ order.furniture_type }}</td>
                 <td><span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span></td>
                 <td>{{ order.deadline_at }}</td>
-                <td>{{ order.price }} ₽</td>
+                <td>{{ order.total_price }} ₽</td>
             </tr>
         {% empty %}
             <tr><td colspan="5" class="text-muted text-center py-3">Заявок пока нет.</td></tr>

@@ -176,3 +176,28 @@ class OrderCreateFormPriceValidationTests(TestCase):
         from .forms import OrderCreateForm
         form = OrderCreateForm(self._form_data('15000.50'))
         self.assertNotIn('price', form.errors)
+
+
+class AnalyticsTotalClosedValueTests(TestCase):
+    """Финансовая сводка должна учитывать доп. работы, а не только базовую цену заявки."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager', password='x', role=User.Role.MANAGER)
+        self.ft = FurnitureType.objects.create(name='Кухня')
+
+    def test_total_closed_value_includes_additional_works(self):
+        from decimal import Decimal
+
+        from apps.reports.models import AdditionalWork
+
+        order = Order.objects.create(
+            furniture_type=self.ft, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=Decimal('10000'),
+            status=Order.Status.CLOSED, created_by=self.manager,
+        )
+        AdditionalWork.objects.create(order=order, description='Доп. работа', price=Decimal('2500'))
+
+        self.client.force_login(self.manager)
+        response = self.client.get('/manager/analytics/')
+
+        self.assertEqual(response.context['total_closed_value'], Decimal('12500'))

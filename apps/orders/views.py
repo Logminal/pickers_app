@@ -228,6 +228,7 @@ class AnalyticsDashboardView(ManagerRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         from apps.payments.models import PaymentRecord, Rating
+        from apps.reports.models import AdditionalWork
 
         context = super().get_context_data(**kwargs)
         now = timezone.now()
@@ -260,9 +261,13 @@ class AnalyticsDashboardView(ManagerRequiredMixin, TemplateView):
         # --- Финансовая сводка ---
         context['total_paid'] = PaymentRecord.objects.filter(is_paid=True).aggregate(s=Sum('amount'))['s'] or 0
         context['total_pending'] = PaymentRecord.objects.filter(is_paid=False).aggregate(s=Sum('amount'))['s'] or 0
-        context['total_closed_value'] = Order.objects.filter(
-            status=Order.Status.CLOSED,
+        # total_price = price + доп. работы, а это Python-property, не поле БД —
+        # считаем в две агрегации, а не Sum('price') (та не учитывала доп. работы).
+        closed_base_total = Order.objects.filter(status=Order.Status.CLOSED).aggregate(s=Sum('price'))['s'] or 0
+        closed_additional_total = AdditionalWork.objects.filter(
+            order__status=Order.Status.CLOSED,
         ).aggregate(s=Sum('price'))['s'] or 0
+        context['total_closed_value'] = closed_base_total + closed_additional_total
 
         return context
 

@@ -15,7 +15,15 @@
         <tr><th>Срочность</th><td>{{ order.get_urgency_display }}</td></tr>
         <tr><th>Габариты</th><td>{{ order.dimensions|default:'—' }}</td></tr>
         <tr><th>Модулей</th><td>{{ order.modules_count|default:'—' }}</td></tr>
-        <tr><th>Стоимость</th><td>{{ order.price }} ₽</td></tr>
+        <tr>
+            <th>Стоимость</th>
+            <td>
+                {{ order.price }} ₽
+                {% if order.additional_works.exists %}
+                    <span class="text-muted">+ {{ order.additional_works_total }} ₽ доп. работы = <strong>{{ order.total_price }} ₽</strong></span>
+                {% endif %}
+            </td>
+        </tr>
         <tr><th>Комментарий</th><td>{{ order.comment|default:'—' }}</td></tr>
         {% if order.spec_file %}
         <tr><th>Спецификация</th><td><a href="{{ order.spec_file.url }}">Скачать</a></td></tr>
