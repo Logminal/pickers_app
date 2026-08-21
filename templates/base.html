@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Платформа сборщиков мебели{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg app-navbar mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'order_list' %}">Сборка мебели</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" style="border-color: rgba(255,255,255,0.3);">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMain">
+            <ul class="navbar-nav me-auto">
+                {% if user.is_authenticated %}
+                    {% if user.role == 'collector' %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'order_list' %}">Доступные заявки</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'my_orders' %}">Мои заявки</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'payment_history' %}">Выплаты</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'my_profile' %}">Мой профиль</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'manager_order_list' %}">Все заявки</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'change_requests_list' %}">Изменения анкет</a></li>
+                    {% endif %}
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav align-items-lg-center">
+                {% if user.is_authenticated %}
+                    <li class="nav-item"><span class="navbar-text me-2">{{ user.username }}</span></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'logout' %}">Выйти</a></li>
+                {% else %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Войти</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'collector_register' %}">Регистрация сборщика</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container pb-5">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+</div>
+
+<script>
+// Автоматические маски ввода по имени поля — работает на всех формах сайта без
+// ручной разметки каждого шаблона. Подключаем по совпадению фрагмента в name/id.
+document.addEventListener('DOMContentLoaded', function () {
+    function digitsOnly(value) {
+        return value.replace(/\D/g, '');
+    }
+
+    function applyMask(input, formatter, maxDigits) {
+        input.addEventListener('input', function () {
+            let digits = digitsOnly(input.value).slice(0, maxDigits);
+            input.value = formatter(digits);
+        });
+        input.setAttribute('inputmode', 'numeric');
+        input.setAttribute('autocomplete', 'off');
+    }
+
+    function phoneFormatter(digits) {
+        if (!digits) return '';
+        if (digits[0] === '8') digits = '7' + digits.slice(1);
+        if (digits[0] !== '7') digits = '7' + digits;
+        digits = digits.slice(0, 11);
+
+        let result = '+7';
+        if (digits.length > 1) result += ' (' + digits.slice(1, 4);
+        if (digits.length >= 4) result += ')';
+        if (digits.length >= 5) result += ' ' + digits.slice(4, 7);
+        if (digits.length >= 8) result += '-' + digits.slice(7, 9);
+        if (digits.length >= 10) result += '-' + digits.slice(9, 11);
+        return result;
+    }
+
+    function passportFormatter(digits) {
+        let result = digits.slice(0, 4);
+        if (digits.length > 4) result += ' ' + digits.slice(4, 10);
+        return result;
+    }
+
+    function divisionCodeFormatter(digits) {
+        let result = digits.slice(0, 3);
+        if (digits.length > 3) result += '-' + digits.slice(3, 6);
+        return result;
+    }
+
+    document.querySelectorAll('input').forEach(function (input) {
+        const name = (input.name || input.id || '').toLowerCase();
+
+        if (name.includes('phone')) {
+            applyMask(input, phoneFormatter, 11);
+            input.setAttribute('placeholder', '+7 (___) ___-__-__');
+        } else if (name === 'passport_series_number') {
+            applyMask(input, passportFormatter, 10);
+            input.setAttribute('placeholder', '0000 000000');
+        } else if (name === 'passport_division_code') {
+            applyMask(input, divisionCodeFormatter, 6);
+            input.setAttribute('placeholder', '000-000');
+        } else if (name === 'inn') {
+            applyMask(input, function (d) { return d; }, 12);
+        } else if (name === 'ogrnip') {
+            applyMask(input, function (d) { return d; }, 15);
+        }
+    });
+});
+</script>
+
+</body>
+</html>

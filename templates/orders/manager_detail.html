@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+{% block title %}Заявка #{{ order.pk }}{% endblock %}
+{% block content %}
+<a href="{% url 'manager_order_list' %}" class="btn btn-link ps-0 mb-2">&larr; Все заявки</a>
+
+<div class="content-card">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <h1 class="h4 mb-0">Заявка #{{ order.pk }} — {{ order.furniture_type }}</h1>
+        <span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span>
+    </div>
+
+    <table class="table table-sm w-auto">
+        <tr><th>Адрес</th><td>{{ order.address }}</td></tr>
+        <tr><th>Желаемая дата</th><td>{{ order.scheduled_at }}</td></tr>
+        <tr>
+            <th>Срок сдачи</th>
+            <td>{{ order.deadline_at }}{% if order.is_overdue %} <span class="status-pill status-danger">просрочено</span>{% endif %}</td>
+        </tr>
+        <tr>
+            <th>Срочность</th>
+            <td>{% if order.urgency == 'urgent' %}<span class="status-pill status-danger">Срочная</span>{% else %}Обычная{% endif %}</td>
+        </tr>
+        <tr>
+            <th>Сборщик</th>
+            <td>
+                {% if order.collector %}
+                    <a href="{% url 'collector_profile_detail' order.collector.pk %}">
+                        {{ order.collector.collector_profile.full_name|default:order.collector }}
+                    </a>
+                    {% with profile=order.collector.collector_profile %}
+                        {% if profile.average_rating %}
+                            <span class="status-pill status-brand">⭐ {{ profile.average_rating|floatformat:1 }}/5 ({{ profile.ratings_count }})</span>
+                        {% else %}
+                            <span class="status-pill status-neutral">Нет оценок</span>
+                        {% endif %}
+                    {% endwith %}
+                {% else %}
+                    <span class="text-muted">— не забронирована —</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Стоимость</th>
+            <td>
+                {{ order.price }} ₽
+                {% if order.additional_works.exists %}
+                    <span class="text-muted">+ {{ order.additional_works_total }} ₽ доп. работы = <strong>{{ order.total_price }} ₽</strong></span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr><th>Комментарий</th><td>{{ order.comment|default:'—' }}</td></tr>
+        <tr><th>Клиент на объекте</th><td>{{ order.client_contact_name|default:'—' }} {{ order.client_contact_phone }}</td></tr>
+        {% if order.spec_file %}
+        <tr><th>Спецификация</th><td><a href="{{ order.spec_file.url }}">Скачать</a></td></tr>
+        {% endif %}
+    </table>
+
+    <div class="d-flex gap-2 flex-wrap">
+        {% if order.status == 'booked' %}
+            <form method="post" action="{% url 'order_confirm_booking' order.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'manager_order_detail' order.pk %}">
+                <button class="btn btn-success">Подтвердить бронь</button>
+            </form>
+            <form method="post" action="{% url 'order_reject_booking' order.pk %}"
+                  onsubmit="return confirm('Отклонить бронь этого сборщика? Заявка вернётся в общий пул, сборщик НЕ будет заблокирован.');">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'manager_order_detail' order.pk %}">
+                <button class="btn btn-outline-danger">Отклонить бронь</button>
+            </form>
+        {% endif %}
+
+        {% if order.status == 'confirmed' or order.status == 'in_progress' %}
+            <form method="post" action="{% url 'order_revoke_and_block' order.pk %}"
+                  onsubmit="return confirm('Сборщик {{ order.collector }} пропал: снять с него бронь И ЗАБЛОКИРОВАТЬ аккаунт? Это необратимо без ручной разблокировки.');">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'manager_order_detail' order.pk %}">
+                <button class="btn btn-danger">Сборщик пропал — снять бронь и заблокировать</button>
+            </form>
+        {% endif %}
+
+        {% if order.status == 'report_uploaded' or order.status == 'accepted' or order.status == 'rejected_for_rework' %}
+            <a href="{% url 'report_review' order.pk %}" class="btn btn-outline-primary">Проверить фотоотчёт</a>
+        {% endif %}
+
+        {% if order.status != 'closed' and order.status != 'cancelled' %}
+            <form method="post" action="{% url 'order_cancel' order.pk %}"
+                  onsubmit="return confirm('Отменить заявку #{{ order.pk }}? Действие необратимо.');">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'manager_order_detail' order.pk %}">
+                <button class="btn btn-outline-secondary">Отменить заявку</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if order.status == 'closed' %}
+<div class="content-card">
+    <h2 class="h6 mb-3">Оценка и выплата</h2>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        {% if order.rating %}
+            <span class="status-pill status-success">⭐ {{ order.rating.score }}/5 — оценено</span>
+            <a href="{% url 'rate_collector' order.pk %}" class="btn btn-sm btn-outline-secondary">Изменить оценку</a>
+        {% else %}
+            <a href="{% url 'rate_collector' order.pk %}" class="btn btn-sm btn-primary">Оценить сборщика</a>
+        {% endif %}
+
+        {% if order.payment_record %}
+            {% if order.payment_record.is_paid %}
+                <span class="status-pill status-success">💳 Выплачено {{ order.payment_record.amount }} ₽</span>
+            {% else %}
+                <span class="status-pill status-warning">💳 К выплате {{ order.payment_record.amount }} ₽</span>
+                <form method="post" action="{% url 'mark_payment_paid' order.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-success">Отметить выплаченным</button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="content-card">
+    <h2 class="h6 mb-3">История изменений статуса</h2>
+    <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0">
+        <thead>
+            <tr>
+                <th>Было</th>
+                <th>Стало</th>
+                <th>Кто изменил</th>
+                <th>Комментарий</th>
+                <th>Дата и время</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for h in order.status_history.all %}
+            <tr>
+                <td><span class="status-pill {{ h.from_status|status_class }}">{{ h.get_from_status_display|default:'—' }}</span></td>
+                <td><span class="status-pill {{ h.to_status|status_class }}">{{ h.get_to_status_display }}</span></td>
+                <td>
+                    {% if h.changed_by.role == 'collector' %}
+                        <a href="{% url 'collector_profile_detail' h.changed_by.pk %}">{{ h.changed_by }}</a>
+                    {% else %}
+                        {{ h.changed_by|default:'—' }}
+                    {% endif %}
+                </td>
+                <td>{{ h.comment|default:'—' }}</td>
+                <td class="text-muted small">{{ h.created_at }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

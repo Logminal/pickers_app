@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Фотоотчёт по заявке #{{ order.pk }}{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Фотоотчёт по заявке #{{ order.pk }}</h1>
+
+{% if not form.fields %}
+    <div class="alert alert-warning">
+        Для этого типа мебели не настроен шаблон слотов фото. Обратитесь к администратору.
+    </div>
+{% else %}
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="content-card">
+        <h2 class="h6 mb-3">📷 Фото по слотам</h2>
+        {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                {{ field }}
+                {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="content-card">
+        <h2 class="h6 mb-3">✅ Чек-лист перед сдачей</h2>
+        {% for item in checklist %}
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="checklist" value="{{ item }}" id="chk_{{ forloop.counter }}" required>
+                <label class="form-check-label" for="chk_{{ forloop.counter }}">{{ item }}</label>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="content-card">
+        <h2 class="h6 mb-1">➕ Дополнительные работы сверх заявки</h2>
+        <p class="text-muted small mb-3">Если на объекте потребовалось сделать что-то, чего не было в исходной заявке — укажите здесь, чтобы менеджер учёл это при закрытии.</p>
+        {% for i in additional_work_rows %}
+            <div class="row g-2 mb-2">
+                <div class="col-8">
+                    <input type="text" class="form-control form-control-sm" name="extra_work_desc_{{ i }}" placeholder="Описание работы">
+                </div>
+                <div class="col-4">
+                    <input type="text" class="form-control form-control-sm" name="extra_work_price_{{ i }}" placeholder="Стоимость, ₽">
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="content-card">
+        <label class="form-label" for="comment">Комментарий (что сделано, есть ли нюансы)</label>
+        <textarea class="form-control" name="comment" id="comment" rows="3"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Отправить на проверку</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Изменить данные{% endblock %}
+{% block content %}
+<a href="{% url 'my_profile' %}" class="btn btn-link ps-0">&larr; Мой профиль</a>
+
+<div class="content-card" style="max-width: 640px;">
+    <h1 class="h4 mb-1">Изменить данные</h1>
+    <p class="text-muted small mb-4">Изменения вступят в силу только после подтверждения менеджером.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="mb-3">
+                {% if field.field.widget.input_type == 'checkbox' %}
+                    <div class="form-check">
+                        {{ field }}
+                        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    </div>
+                {% else %}
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                {% endif %}
+                {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary w-100">Отправить на подтверждение</button>
+    </form>
+</div>
+{% endblock %}

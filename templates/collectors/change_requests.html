@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+{% block title %}Заявки на изменение анкет{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Заявки на изменение анкет</h1>
+
+{% if requests %}
+    {% for req in requests %}
+    <div class="content-card">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h2 class="h6 mb-0">
+                <a href="{% url 'collector_profile_detail' req.profile.user_id %}">{{ req.profile.full_name }}</a>
+            </h2>
+            <span class="text-muted small">{{ req.created_at }}</span>
+        </div>
+
+        <table class="table table-sm w-auto mb-3">
+            <thead><tr><th>Поле</th><th>Новое значение</th></tr></thead>
+            <tbody>
+            {% for key, value in req.changes.items %}
+                <tr><td>{{ field_labels|get_item:key }}</td><td>{{ value }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <form method="post" action="{% url 'change_request_review' req.pk %}" class="d-flex gap-2 align-items-start flex-wrap">
+            {% csrf_token %}
+            <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">Одобрить</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="collapse" data-bs-target="#reject-{{ req.pk }}">Отклонить</button>
+            <div class="collapse w-100 mt-2" id="reject-{{ req.pk }}">
+                <textarea name="reason" class="form-control form-control-sm mb-2" placeholder="Причина отклонения"></textarea>
+                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger">Отправить отказ</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <div class="h1 mb-2">✅</div>
+    <p class="mb-0">Нет заявок на изменение анкет, ожидающих решения.</p>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+{% block title %}Мои заявки{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Мои заявки</h1>
+{% if orders %}
+<div class="table-responsive">
+<table class="table table-hover mb-0">
+    <thead>
+        <tr><th>#</th><th>Тип</th><th>Статус</th><th>Срок сдачи</th><th>Сумма</th></tr>
+    </thead>
+    <tbody>
+    {% for order in orders %}
+        <tr>
+            <td><a href="{% url 'order_detail' order.pk %}">#{{ order.pk }}</a></td>
+            <td>{{ order.furniture_type }}</td>
+            <td><span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span></td>
+            <td>{{ order.deadline_at }}</td>
+            <td>{{ order.price }} ₽</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="h1 mb-2">🗂️</div>
+    <p class="mb-0">У вас пока нет заявок.</p>
+</div>
+{% endif %}
+{% endblock %}

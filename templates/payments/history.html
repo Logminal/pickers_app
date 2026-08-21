@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}История выплат{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">История выплат</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card stat-active">
+            <div class="stat-value">{{ total_paid }} ₽</div>
+            <div class="stat-label">Выплачено</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card {% if total_pending %}stat-danger-accent{% endif %}">
+            <div class="stat-value">{{ total_pending }} ₽</div>
+            <div class="stat-label">Ожидает выплаты</div>
+        </div>
+    </div>
+</div>
+
+{% if records %}
+<div class="table-responsive">
+<table class="table table-hover mb-0">
+    <thead>
+        <tr><th>Заявка</th><th>Тип</th><th>Сумма</th><th>Статус</th><th>Дата выплаты</th></tr>
+    </thead>
+    <tbody>
+    {% for record in records %}
+        <tr>
+            <td><a href="{% url 'order_detail' record.order_id %}">#{{ record.order_id }}</a></td>
+            <td>{{ record.order.furniture_type }}</td>
+            <td>{{ record.amount }} ₽</td>
+            <td>
+                {% if record.is_paid %}
+                    <span class="status-pill status-success">Выплачено</span>
+                {% else %}
+                    <span class="status-pill status-warning">Ожидает выплаты</span>
+                {% endif %}
+            </td>
+            <td>{{ record.paid_at|default:'—' }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="h1 mb-2">💳</div>
+    <p class="mb-0">Пока нет закрытых заявок с начислениями.</p>
+</div>
+{% endif %}
+{% endblock %}

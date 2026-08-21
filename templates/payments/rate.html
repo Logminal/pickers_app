@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Оценка сборщика — заявка #{{ order.pk }}{% endblock %}
+{% block content %}
+<a href="{% url 'manager_order_detail' order.pk %}" class="btn btn-link ps-0">&larr; К заявке #{{ order.pk }}</a>
+
+<div class="content-card" style="max-width: 560px;">
+    <h1 class="h4 mb-1">Оценить сборщика</h1>
+    <p class="text-muted small mb-4">
+        {{ order.collector }} — заявка #{{ order.pk }}, {{ order.furniture_type }}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Оценка</label>
+            <div class="d-flex gap-3">
+                {% for radio in form.score %}
+                    <label class="form-check-label d-flex align-items-center gap-1">
+                        {{ radio.tag }} {{ radio.choice_label }}
+                    </label>
+                {% endfor %}
+            </div>
+            {% for error in form.score.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-check mb-2">
+            {{ form.deadline_met }}
+            <label class="form-check-label" for="{{ form.deadline_met.id_for_label }}">{{ form.deadline_met.label }}</label>
+        </div>
+
+        <div class="form-check mb-3">
+            {{ form.had_complaint }}
+            <label class="form-check-label" for="{{ form.had_complaint.id_for_label }}">{{ form.had_complaint.label }}</label>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+            {{ form.comment }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Сохранить оценку</button>
+    </form>
+</div>
+{% endblock %}

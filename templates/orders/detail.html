@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+{% block title %}Заявка #{{ order.pk }}{% endblock %}
+{% block content %}
+<div class="content-card">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <h1 class="h4 mb-0">Заявка #{{ order.pk }} — {{ order.furniture_type }}</h1>
+        <span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span>
+    </div>
+
+    <table class="table table-sm w-auto">
+        <tr><th>Адрес</th><td>{{ order.address }}</td></tr>
+        <tr><th>Желаемая дата</th><td>{{ order.scheduled_at }}</td></tr>
+        <tr><th>Срок сдачи</th><td>{{ order.deadline_at }}</td></tr>
+        <tr><th>Срочность</th><td>{{ order.get_urgency_display }}</td></tr>
+        <tr><th>Габариты</th><td>{{ order.dimensions|default:'—' }}</td></tr>
+        <tr><th>Модулей</th><td>{{ order.modules_count|default:'—' }}</td></tr>
+        <tr><th>Стоимость</th><td>{{ order.price }} ₽</td></tr>
+        <tr><th>Комментарий</th><td>{{ order.comment|default:'—' }}</td></tr>
+        {% if order.spec_file %}
+        <tr><th>Спецификация</th><td><a href="{{ order.spec_file.url }}">Скачать</a></td></tr>
+        {% endif %}
+    </table>
+
+    {% if order.status == 'published' %}
+        <form method="post" action="{% url 'order_book' order.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Беру в работу</button>
+        </form>
+    {% elif order.collector == user %}
+        {% if order.status == 'confirmed' or order.status == 'in_progress' or order.status == 'rejected_for_rework' %}
+            <a href="{% url 'report_upload' order.pk %}" class="btn btn-primary">Загрузить фотоотчёт</a>
+        {% endif %}
+        {% if order.status == 'closed' and order.act %}
+            <a href="{{ order.act.file.url }}" class="btn btn-outline-secondary">Скачать акт приёма-передачи</a>
+        {% endif %}
+        {% if order.status == 'booked' or order.status == 'report_uploaded' or order.status == 'accepted' %}
+            <p class="text-muted small mb-0">Ожидайте действий менеджера — текущий статус «{{ order.get_status_display }}».</p>
+        {% endif %}
+    {% else %}
+        <p class="text-muted mb-0">Заявка уже забронирована другим сборщиком.</p>
+    {% endif %}
+</div>
+{% endblock %}
