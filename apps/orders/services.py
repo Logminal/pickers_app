@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -8,6 +9,14 @@ from .models import Order, OrderStatusHistory
 
 class OrderBookingError(Exception):
     pass
+
+
+# Активные брони — те, что ещё не закрыты и не отменены; именно они занимают
+# "слот" сборщика (п.10 ТЗ, открытый вопрос №3).
+ACTIVE_BOOKING_STATUSES = (
+    Order.Status.BOOKED, Order.Status.CONFIRMED, Order.Status.IN_PROGRESS,
+    Order.Status.REPORT_UPLOADED, Order.Status.REJECTED_FOR_REWORK,
+)
 
 
 @transaction.atomic
@@ -22,6 +31,13 @@ def book_order(order_id, collector):
 
     if order.status != Order.Status.PUBLISHED:
         raise OrderBookingError('Заявка уже забронирована или недоступна')
+
+    active_count = Order.objects.filter(collector=collector, status__in=ACTIVE_BOOKING_STATUSES).count()
+    if active_count >= settings.MAX_ACTIVE_BOOKINGS_PER_COLLECTOR:
+        raise OrderBookingError(
+            f'Нельзя забронировать больше {settings.MAX_ACTIVE_BOOKINGS_PER_COLLECTOR} '
+            f'заявок одновременно — сначала завершите текущие.'
+        )
 
     order.status = Order.Status.BOOKED
     order.collector = collector

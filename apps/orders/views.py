@@ -53,6 +53,18 @@ class OrderListView(CollectorConfirmedRequiredMixin, ListView):
     def get_queryset(self):
         return Order.objects.filter(status=Order.Status.PUBLISHED).order_by('deadline_at')
 
+    def get_context_data(self, **kwargs):
+        from django.conf import settings
+
+        from .services import ACTIVE_BOOKING_STATUSES
+
+        context = super().get_context_data(**kwargs)
+        context['active_bookings_count'] = Order.objects.filter(
+            collector=self.request.user, status__in=ACTIVE_BOOKING_STATUSES,
+        ).count()
+        context['max_active_bookings'] = settings.MAX_ACTIVE_BOOKINGS_PER_COLLECTOR
+        return context
+
 
 class OrderDetailView(LoginRequiredMixin, DetailView):
     """Карточка заявки для сборщика. Менеджеров сюда не пускаем — у них своя (см. ManagerOrderDetailView)."""

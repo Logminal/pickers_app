@@ -1,7 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Доступные заявки{% endblock %}
 {% block content %}
-<h1 class="h4 mb-4">Доступные заявки</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0">Доступные заявки</h1>
+    <span class="status-pill {% if active_bookings_count >= max_active_bookings %}status-danger{% else %}status-neutral{% endif %}">
+        Активных броней: {{ active_bookings_count }} / {{ max_active_bookings }}
+    </span>
+</div>
 {% if orders %}
 <div class="row g-3">
     {% for order in orders %}
