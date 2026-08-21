@@ -105,6 +105,14 @@ class OrderCreateView(ManagerRequiredMixin, CreateView):
     template_name = 'orders/create.html'
     success_url = reverse_lazy('manager_order_list')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['bitrix_breakdown_fields'] = [
+            'bitrix_item_amount', 'bitrix_assembly_percent', 'bitrix_installation_amount',
+            'bitrix_additional_services_amount', 'bitrix_lift_amount', 'bitrix_delivery_amount',
+        ]
+        return context
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         form.instance.status = Order.Status.PUBLISHED

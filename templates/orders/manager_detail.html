@@ -49,6 +49,23 @@
                 {% endif %}
             </td>
         </tr>
+        {% if order.collector_payout_amount is not None %}
+        <tr>
+            <th>Разбивка (Bitrix24)</th>
+            <td class="small text-muted">
+                Сумма изделия {{ order.bitrix_item_amount }} ₽ ·
+                Процент сборки {{ order.bitrix_assembly_percent }}% ({{ order.bitrix_assembly_amount }} ₽) ·
+                Монтаж {{ order.bitrix_installation_amount }} ₽ ·
+                Доп. услуги {{ order.bitrix_additional_services_amount }} ₽ ·
+                Подъём {{ order.bitrix_lift_amount }} ₽ ·
+                Доставка {{ order.bitrix_delivery_amount }} ₽
+            </td>
+        </tr>
+        <tr>
+            <th>К выплате сборщику</th>
+            <td><strong>{{ order.collector_payout_total }} ₽</strong></td>
+        </tr>
+        {% endif %}
         <tr><th>Комментарий</th><td>{{ order.comment|default:'—' }}</td></tr>
         <tr><th>Клиент на объекте</th><td>{{ order.client_contact_name|default:'—' }} {{ order.client_contact_phone }}</td></tr>
         {% if order.spec_file %}

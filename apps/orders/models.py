@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -52,6 +54,28 @@ class Order(TimeStampedModel):
     )
     bitrix_deal_id = models.CharField('ID сделки в Bitrix24', max_length=50, blank=True)
 
+    # Разбивка стоимости из сделки Bitrix24 (уточнено с заказчиком) — заполняется кнопкой
+    # «Подтянуть цену» вместе с ценой. Нужна отдельно от price, т.к. выплата сборщику
+    # считается не от полной стоимости, а только от части этих компонентов.
+    bitrix_item_amount = models.DecimalField(
+        'Сумма изделия (Bitrix)', max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    bitrix_assembly_percent = models.DecimalField(
+        'Процент сборки, цеха, % (Bitrix)', max_digits=5, decimal_places=2, null=True, blank=True,
+    )
+    bitrix_installation_amount = models.DecimalField(
+        'Монтаж (Bitrix)', max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    bitrix_additional_services_amount = models.DecimalField(
+        'Доп. услуги (Bitrix)', max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    bitrix_lift_amount = models.DecimalField(
+        'Подъём (Bitrix)', max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    bitrix_delivery_amount = models.DecimalField(
+        'Доставка (Bitrix)', max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+
     comment = models.TextField('Комментарий/особые условия', blank=True)
     client_contact_name = models.CharField('ФИО клиента на объекте', max_length=255, blank=True)
     client_contact_phone = models.CharField('Телефон клиента', max_length=20, blank=True)
@@ -88,6 +112,51 @@ class Order(TimeStampedModel):
     @property
     def total_price(self):
         return self.price + self.additional_works_total
+
+    @property
+    def bitrix_assembly_amount(self):
+        """Процент сборки (цеха) в деньгах = процент от суммы изделия."""
+        if self.bitrix_item_amount is None or self.bitrix_assembly_percent is None:
+            return None
+        return (self.bitrix_item_amount * self.bitrix_assembly_percent / Decimal('100')).quantize(Decimal('0.01'))
+
+    @property
+    def bitrix_total(self):
+        """Итого = сумма всех компонентов из Bitrix24 (уточнено с заказчиком)."""
+        assembly_amount = self.bitrix_assembly_amount
+        if self.bitrix_item_amount is None or assembly_amount is None:
+            return None
+        return (
+            self.bitrix_item_amount + assembly_amount
+            + (self.bitrix_installation_amount or 0)
+            + (self.bitrix_additional_services_amount or 0)
+            + (self.bitrix_lift_amount or 0)
+            + (self.bitrix_delivery_amount or 0)
+        )
+
+    @property
+    def collector_payout_amount(self):
+        """То, что получит сборщик = процент сборки (цеха) + монтаж + доп. услуги
+        (уточнено с заказчиком — НЕ полная стоимость сделки). None, если разбивка
+        из Bitrix24 не заполнена."""
+        assembly_amount = self.bitrix_assembly_amount
+        if assembly_amount is None:
+            return None
+        return (
+            assembly_amount
+            + (self.bitrix_installation_amount or 0)
+            + (self.bitrix_additional_services_amount or 0)
+        )
+
+    @property
+    def collector_payout_total(self):
+        """Итоговая сумма к выплате сборщику: разбивка Bitrix24 (если есть) плюс
+        доп. работы, обнаруженные на объекте (AdditionalWork). Если разбивки нет —
+        используется total_price (старое поведение)."""
+        base = self.collector_payout_amount
+        if base is None:
+            return self.total_price
+        return base + self.additional_works_total
 
     @property
     def is_overdue(self):

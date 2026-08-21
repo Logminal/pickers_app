@@ -24,6 +24,7 @@ urlpatterns = [
     path('', include('apps.reports.urls')),
     path('', include('apps.payments.urls')),
     path('', include('apps.notifications.urls')),
+    path('', include('apps.integrations.urls')),
     path('collectors/', include('apps.collectors.urls')),
 ]
 

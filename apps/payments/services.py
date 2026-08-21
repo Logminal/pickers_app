@@ -15,8 +15,11 @@ def create_payment_record(order: Order):
     if not order.collector:
         return None
 
+    # Если из Bitrix24 подтянута разбивка стоимости — выплата сборщику считается
+    # только от части (процент сборки + монтаж + доп. услуги), а не от полной
+    # стоимости сделки (уточнено с заказчиком). Иначе — старое поведение.
     record, _ = PaymentRecord.objects.get_or_create(
-        order=order, defaults={'collector': order.collector, 'amount': order.total_price},
+        order=order, defaults={'collector': order.collector, 'amount': order.collector_payout_total},
     )
     return record
 

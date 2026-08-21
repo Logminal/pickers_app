@@ -19,7 +19,7 @@ def _sync_payment_record(order):
     record = PaymentRecord.objects.filter(order=order).first()
     if record is None or record.is_paid:
         return
-    new_amount = order.total_price
+    new_amount = order.collector_payout_total
     if record.amount != new_amount:
         record.amount = new_amount
         record.save(update_fields=['amount', 'updated_at'])

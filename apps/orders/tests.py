@@ -287,3 +287,57 @@ class NewOrderNotificationTests(TestCase):
         self.assertTrue(
             NotificationLog.objects.filter(user=collector, event_type='new_matching_order').exists()
         )
+
+
+class BitrixPayoutCalculationTests(TestCase):
+    """Выплата сборщику из разбивки Bitrix24 (уточнено с заказчиком):
+    процент сборки (в деньгах) + монтаж + доп. услуги — НЕ полная стоимость."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager', password='x', role=User.Role.MANAGER)
+        self.ft = FurnitureType.objects.create(name='Кухня')
+
+    def _make_order(self, **breakdown):
+        return Order.objects.create(
+            furniture_type=self.ft, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=100000,
+            status=Order.Status.PUBLISHED, created_by=self.manager, **breakdown,
+        )
+
+    def test_no_breakdown_falls_back_to_total_price(self):
+        order = self._make_order()
+
+        self.assertIsNone(order.collector_payout_amount)
+        self.assertEqual(order.collector_payout_total, order.total_price)
+
+    def test_payout_is_assembly_percent_plus_installation_plus_additional_services(self):
+        order = self._make_order(
+            bitrix_item_amount=80000, bitrix_assembly_percent=15,
+            bitrix_installation_amount=5000, bitrix_additional_services_amount=2000,
+            bitrix_lift_amount=1000, bitrix_delivery_amount=2500,
+        )
+
+        self.assertEqual(order.bitrix_assembly_amount, 12000)
+        self.assertEqual(order.bitrix_total, 80000 + 12000 + 5000 + 2000 + 1000 + 2500)
+        self.assertEqual(order.collector_payout_amount, 12000 + 5000 + 2000)
+        self.assertNotIn(order.collector_payout_amount, [order.bitrix_total, order.price])
+
+    def test_payout_ignores_item_amount_lift_and_delivery(self):
+        """Ключевая проверка: 'Сумма изделия', 'Подъем' и 'Доставка' НЕ входят в выплату сборщику."""
+        cheap_item = self._make_order(
+            bitrix_item_amount=1000, bitrix_assembly_percent=10,
+            bitrix_installation_amount=3000, bitrix_additional_services_amount=0,
+            bitrix_lift_amount=99999, bitrix_delivery_amount=99999,
+        )
+        self.assertEqual(cheap_item.collector_payout_amount, 100 + 3000)
+
+    def test_payout_total_includes_onsite_additional_work(self):
+        from apps.reports.models import AdditionalWork
+
+        order = self._make_order(
+            bitrix_item_amount=80000, bitrix_assembly_percent=15,
+            bitrix_installation_amount=5000, bitrix_additional_services_amount=2000,
+        )
+        AdditionalWork.objects.create(order=order, description='Доп. работа на месте', price=1500)
+
+        self.assertEqual(order.collector_payout_total, 12000 + 5000 + 2000 + 1500)

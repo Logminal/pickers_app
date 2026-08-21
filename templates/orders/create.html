@@ -6,15 +6,99 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {% for field in form %}
-            <div class="mb-3">
-                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% for error in field.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-            </div>
+            {% if field.name == 'bitrix_item_amount' %}
+                <div class="content-card mb-3" style="background: var(--bs-light, #f8f9fa);">
+                    <div class="small text-muted mb-2">Разбивка стоимости из Bitrix24</div>
+                    <div class="row g-2">
+                        {% for bfield in form %}
+                            {% if bfield.name in bitrix_breakdown_fields %}
+                                <div class="col-6">
+                                    <label class="form-label small" for="{{ bfield.id_for_label }}">{{ bfield.label }}</label>
+                                    {{ bfield }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <div id="bitrix-total-hint" class="small mt-2 text-muted"></div>
+                </div>
+            {% elif field.name in bitrix_breakdown_fields %}
+                {# отрендерено выше блоком разбивки #}
+            {% else %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {% if field.name == 'bitrix_deal_id' %}
+                        <div class="d-flex gap-2">
+                            {{ field }}
+                            <button type="button" id="bitrix-pull-price" class="btn btn-outline-secondary btn-sm text-nowrap">
+                                Подтянуть цену
+                            </button>
+                        </div>
+                        <div id="bitrix-pull-status" class="small mt-1"></div>
+                    {% else %}
+                        {{ field }}
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
         {% endfor %}
         <button type="submit" class="btn btn-primary w-100">Опубликовать заявку</button>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('bitrix-pull-price');
+    if (!btn) return;
+
+    btn.addEventListener('click', async function () {
+        const dealIdInput = document.getElementById('id_bitrix_deal_id');
+        const priceInput = document.getElementById('id_price');
+        const statusEl = document.getElementById('bitrix-pull-status');
+        const dealId = dealIdInput.value.trim();
+
+        if (!dealId) {
+            statusEl.textContent = 'Сначала укажите номер сделки.';
+            statusEl.className = 'small mt-1 text-danger';
+            return;
+        }
+
+        btn.disabled = true;
+        statusEl.textContent = 'Запрашиваю у Bitrix24...';
+        statusEl.className = 'small mt-1 text-muted';
+
+        try {
+            const resp = await fetch('{% url "bitrix_deal_price" %}?deal_id=' + encodeURIComponent(dealId));
+            const data = await resp.json();
+
+            if (data.ok) {
+                priceInput.value = data.total;
+                document.getElementById('id_bitrix_item_amount').value = data.item_amount;
+                document.getElementById('id_bitrix_assembly_percent').value = data.assembly_percent;
+                document.getElementById('id_bitrix_installation_amount').value = data.installation_amount;
+                document.getElementById('id_bitrix_additional_services_amount').value = data.additional_services_amount;
+                document.getElementById('id_bitrix_lift_amount').value = data.lift_amount;
+                document.getElementById('id_bitrix_delivery_amount').value = data.delivery_amount;
+
+                const hintEl = document.getElementById('bitrix-total-hint');
+                if (hintEl) {
+                    hintEl.textContent = 'Итого: ' + data.total + ' ₽. К выплате сборщику: ' + data.payout + ' ₽ (процент сборки + монтаж + доп. услуги).';
+                }
+
+                statusEl.textContent = 'Разбивка подтянута' + (data.title ? ' («' + data.title + '»)' : '') + '.';
+                statusEl.className = 'small mt-1 text-success';
+            } else {
+                statusEl.textContent = data.error || 'Не удалось получить цену.';
+                statusEl.className = 'small mt-1 text-danger';
+            }
+        } catch (err) {
+            statusEl.textContent = 'Ошибка сети при обращении к Bitrix24.';
+            statusEl.className = 'small mt-1 text-danger';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+});
+</script>
 {% endblock %}
