@@ -1,10 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Avg, Count, Sum
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.views.generic import CreateView, DetailView, ListView, View
+from django.views.generic import CreateView, DetailView, ListView, TemplateView, View
 
 from apps.collectors.models import CollectorProfile
 from apps.collectors.services import block_collector
@@ -212,3 +213,79 @@ class OrderCancelView(ManagerRequiredMixin, View):
         cancel_order(pk, request.user, reason=request.POST.get('reason', ''))
         messages.success(request, 'Заявка отменена.')
         return redirect(request.POST.get('next', 'manager_order_list'))
+
+
+class AnalyticsDashboardView(ManagerRequiredMixin, TemplateView):
+    """Сводная аналитика для менеджера/админа (п.7 ТЗ): сколько заявок закрыто,
+    средний рейтинг сборщиков по регионам, финансовая сводка."""
+
+    template_name = 'orders/analytics.html'
+
+    OPEN_STATUSES = (
+        Order.Status.CONFIRMED, Order.Status.IN_PROGRESS,
+        Order.Status.REPORT_UPLOADED, Order.Status.REJECTED_FOR_REWORK,
+    )
+
+    def get_context_data(self, **kwargs):
+        from apps.payments.models import PaymentRecord, Rating
+
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        # --- Заявки ---
+        context['total_orders'] = Order.objects.count()
+        context['closed_orders_count'] = Order.objects.filter(status=Order.Status.CLOSED).count()
+        context['cancelled_orders_count'] = Order.objects.filter(status=Order.Status.CANCELLED).count()
+        context['overdue_orders_count'] = Order.objects.filter(
+            status__in=self.OPEN_STATUSES, deadline_at__lt=now,
+        ).count()
+
+        status_labels = dict(Order.Status.choices)
+        status_breakdown = list(
+            Order.objects.values('status').annotate(count=Count('id')).order_by('-count')
+        )
+        for row in status_breakdown:
+            row['label'] = status_labels.get(row['status'], row['status'])
+        context['status_breakdown'] = status_breakdown
+
+        # --- Рейтинг сборщиков ---
+        context['overall_avg_rating'] = Rating.objects.aggregate(avg=Avg('score'))['avg']
+        context['ratings_count'] = Rating.objects.count()
+
+        context['rating_by_region'] = _rating_by_region()
+
+        context['top_collectors'] = _collector_ranking(order='-avg_rating')[:5]
+        context['bottom_collectors'] = _collector_ranking(order='avg_rating')[:5]
+
+        # --- Финансовая сводка ---
+        context['total_paid'] = PaymentRecord.objects.filter(is_paid=True).aggregate(s=Sum('amount'))['s'] or 0
+        context['total_pending'] = PaymentRecord.objects.filter(is_paid=False).aggregate(s=Sum('amount'))['s'] or 0
+        context['total_closed_value'] = Order.objects.filter(
+            status=Order.Status.CLOSED,
+        ).aggregate(s=Sum('price'))['s'] or 0
+
+        return context
+
+
+def _rating_by_region():
+    from apps.collectors.models import CollectorProfile
+
+    rows = list(
+        CollectorProfile.objects.values('region__name')
+        .annotate(avg_rating=Avg('user__ratings__score'), collectors_count=Count('id', distinct=True))
+        .filter(avg_rating__isnull=False)
+        .order_by('-avg_rating')
+    )
+    for row in rows:
+        row['region_name'] = row['region__name'] or 'Без региона'
+    return rows
+
+
+def _collector_ranking(order):
+    from apps.collectors.models import CollectorProfile
+
+    return list(
+        CollectorProfile.objects.annotate(avg_rating=Avg('user__ratings__score'), ratings_total=Count('user__ratings'))
+        .filter(avg_rating__isnull=False)
+        .order_by(order)
+    )

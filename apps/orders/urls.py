@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AnalyticsDashboardView,
     ManagerOrderDetailView,
     ManagerOrderListView,
     MyOrdersView,
@@ -27,4 +28,6 @@ urlpatterns = [
     path('manager/orders/<int:pk>/reject-booking/', OrderRejectBookingView.as_view(), name='order_reject_booking'),
     path('manager/orders/<int:pk>/revoke-and-block/', OrderRevokeAndBlockView.as_view(), name='order_revoke_and_block'),
     path('manager/orders/<int:pk>/cancel/', OrderCancelView.as_view(), name='order_cancel'),
+
+    path('manager/analytics/', AnalyticsDashboardView.as_view(), name='analytics_dashboard'),
 ]

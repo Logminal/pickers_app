@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Аналитика{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Аналитика</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card stat-active">
+            <div class="stat-value">{{ total_orders }}</div>
+            <div class="stat-label">Всего заявок</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-active">
+            <div class="stat-value">{{ closed_orders_count }}</div>
+            <div class="stat-label">Закрыто</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card {% if overdue_orders_count %}stat-danger-accent{% endif %}">
+            <div class="stat-value" style="{% if overdue_orders_count %}color: var(--danger);{% endif %}">{{ overdue_orders_count }}</div>
+            <div class="stat-label">Просрочено сейчас</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ cancelled_orders_count }}</div>
+            <div class="stat-label">Отменено</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card stat-active">
+            <div class="stat-value">{{ total_paid|floatformat:0 }} ₽</div>
+            <div class="stat-label">Выплачено</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card {% if total_pending %}stat-danger-accent{% endif %}">
+            <div class="stat-value">{{ total_pending|floatformat:0 }} ₽</div>
+            <div class="stat-label">Ожидает выплаты</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-active">
+            <div class="stat-value">{{ total_closed_value|floatformat:0 }} ₽</div>
+            <div class="stat-label">Оборот по закрытым заявкам</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="content-card h-100">
+            <h2 class="h6 mb-3">Заявки по статусам</h2>
+            <table class="table table-sm mb-0">
+                <tbody>
+                {% for row in status_breakdown %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td class="text-end fw-bold">{{ row.count }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="content-card h-100">
+            <h2 class="h6 mb-1">Рейтинг сборщиков</h2>
+            <p class="text-muted small mb-3">
+                {% if overall_avg_rating %}
+                    Средний по всем: ⭐ {{ overall_avg_rating|floatformat:1 }}/5 ({{ ratings_count }} оценок)
+                {% else %}
+                    Оценок пока нет
+                {% endif %}
+            </p>
+
+            <h3 class="h6 small text-muted mb-2">По регионам</h3>
+            <table class="table table-sm mb-3">
+                <tbody>
+                {% for row in rating_by_region %}
+                    <tr>
+                        <td>{{ row.region_name }}</td>
+                        <td class="text-muted small">{{ row.collectors_count }} сборщ.</td>
+                        <td class="text-end fw-bold">⭐ {{ row.avg_rating|floatformat:1 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="text-muted">Пока нет данных.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-md-6">
+        <div class="content-card h-100">
+            <h2 class="h6 mb-3">🏆 Топ-5 сборщиков</h2>
+            <table class="table table-sm mb-0">
+                <tbody>
+                {% for c in top_collectors %}
+                    <tr>
+                        <td><a href="{% url 'collector_profile_detail' c.user_id %}">{{ c.full_name }}</a></td>
+                        <td class="text-muted small">{{ c.ratings_total }} оценок</td>
+                        <td class="text-end fw-bold">⭐ {{ c.avg_rating|floatformat:1 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="text-muted">Пока нет данных.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="content-card h-100">
+            <h2 class="h6 mb-3">⚠️ Требуют внимания (низкий рейтинг)</h2>
+            <table class="table table-sm mb-0">
+                <tbody>
+                {% for c in bottom_collectors %}
+                    <tr>
+                        <td><a href="{% url 'collector_profile_detail' c.user_id %}">{{ c.full_name }}</a></td>
+                        <td class="text-muted small">{{ c.ratings_total }} оценок</td>
+                        <td class="text-end fw-bold">⭐ {{ c.avg_rating|floatformat:1 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="text-muted">Пока нет данных.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
