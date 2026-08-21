@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Заявки на выплату{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Заявки на выплату</h1>
+
+{% if requests %}
+    {% for req in requests %}
+    <div class="content-card">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h2 class="h6 mb-0">
+                <a href="{% url 'collector_profile_detail' req.collector_id %}">
+                    {{ req.collector.collector_profile.full_name|default:req.collector }}
+                </a>
+            </h2>
+            <span class="text-muted small">{{ req.created_at }}</span>
+        </div>
+
+        <table class="table table-sm w-auto mb-3">
+            <tr><th>Сумма</th><td class="fw-bold">{{ req.amount }} ₽</td></tr>
+            <tr><th>Способ</th><td>{{ req.get_method_display }}</td></tr>
+            {% if req.requisite %}<tr><th>Реквизиты</th><td>{{ req.requisite }}</td></tr>{% endif %}
+            <tr><th>Телефон сборщика</th><td>{{ req.collector.phone|default:'—' }}</td></tr>
+            {% if req.comment %}<tr><th>Комментарий</th><td>{{ req.comment }}</td></tr>{% endif %}
+        </table>
+
+        <form method="post" action="{% url 'withdrawal_request_complete' req.pk %}" class="d-flex gap-2 align-items-start flex-wrap">
+            {% csrf_token %}
+            <button type="submit" name="action" value="complete" class="btn btn-sm btn-success"
+                    onclick="return confirm('Подтвердить, что выплата {{ req.amount }} ₽ произведена сборщику?');">
+                Отметить выплаченным
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="collapse" data-bs-target="#cancel-{{ req.pk }}">Отменить</button>
+            <div class="collapse w-100 mt-2" id="cancel-{{ req.pk }}">
+                <textarea name="reason" class="form-control form-control-sm mb-2" placeholder="Причина отмены"></textarea>
+                <button type="submit" name="action" value="cancel" class="btn btn-sm btn-danger">Подтвердить отмену</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <div class="h1 mb-2">✅</div>
+    <p class="mb-0">Нет заявок на выплату, ожидающих обработки.</p>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

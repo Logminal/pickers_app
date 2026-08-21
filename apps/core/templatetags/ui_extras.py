@@ -24,6 +24,10 @@ STATUS_COLOR_MAP = {
     'rejected': 'status-danger',
     # PhotoReport.Status
     'submitted': 'status-brand',
+    # CollectorProfileChangeRequest.Status / WithdrawalRequest.Status
+    'pending': 'status-warning',
+    'approved': 'status-success',
+    'completed': 'status-success',
 }
 
 

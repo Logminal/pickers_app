@@ -48,3 +48,48 @@ class Rating(TimeStampedModel):
 
     def __str__(self):
         return f'{self.collector} — {self.score}/5 (заявка #{self.order_id})'
+
+
+class WithdrawalRequest(TimeStampedModel):
+    """Сборщик запрашивает вывод накопленного баланса. Сама выплата происходит вне
+    системы — менеджер созванивается со сборщиком и переводит/передаёт деньги, после
+    чего отмечает заявку выполненной."""
+
+    class Method(models.TextChoices):
+        IN_PERSON = 'in_person', 'Лично в руки'
+        PHONE_TRANSFER = 'phone_transfer', 'Перевод по номеру телефона'
+        CARD_TRANSFER = 'card_transfer', 'Перевод на карту'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Ожидает звонка'
+        COMPLETED = 'completed', 'Выплачено'
+        CANCELLED = 'cancelled', 'Отменена'
+
+    collector = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='withdrawal_requests',
+        verbose_name='Сборщик',
+    )
+    payment_records = models.ManyToManyField(
+        PaymentRecord, related_name='withdrawal_requests', verbose_name='Включённые начисления',
+    )
+    amount = models.DecimalField('Сумма к выплате', max_digits=10, decimal_places=2)
+    method = models.CharField('Способ получения', max_length=20, choices=Method.choices)
+    requisite = models.CharField(
+        'Номер карты/телефона', max_length=50, blank=True,
+        help_text='Заполняется для перевода по карте или по номеру телефона',
+    )
+    comment = models.CharField('Комментарий сборщика', max_length=255, blank=True)
+    status = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.PENDING)
+    handled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='handled_withdrawal_requests', verbose_name='Кто обработал',
+    )
+    completed_at = models.DateTimeField('Дата выплаты', null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Заявка на выплату'
+        verbose_name_plural = 'Заявки на выплату'
+
+    def __str__(self):
+        return f'{self.collector} — {self.amount} ₽ ({self.get_status_display()})'

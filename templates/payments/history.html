@@ -1,7 +1,13 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 {% block title %}История выплат{% endblock %}
 {% block content %}
-<h1 class="h4 mb-4">История выплат</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0">История выплат</h1>
+    {% if not pending_withdrawal and total_pending %}
+        <a href="{% url 'withdrawal_request_create' %}" class="btn btn-primary btn-sm">Запросить выплату</a>
+    {% endif %}
+</div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
@@ -13,10 +19,19 @@
     <div class="col-md-4">
         <div class="stat-card {% if total_pending %}stat-danger-accent{% endif %}">
             <div class="stat-value">{{ total_pending }} ₽</div>
-            <div class="stat-label">Ожидает выплаты</div>
+            <div class="stat-label">Баланс (ожидает выплаты)</div>
         </div>
     </div>
 </div>
+
+{% if pending_withdrawal %}
+<div class="content-card" style="border-left: 3px solid var(--warning);">
+    <h2 class="h6 mb-2">⏳ Заявка на выплату отправлена</h2>
+    <p class="mb-1">Сумма: <strong>{{ pending_withdrawal.amount }} ₽</strong></p>
+    <p class="mb-1">Способ: {{ pending_withdrawal.get_method_display }}{% if pending_withdrawal.requisite %} — {{ pending_withdrawal.requisite }}{% endif %}</p>
+    <p class="mb-0 text-muted small">Отправлено {{ pending_withdrawal.created_at }}. Ожидайте звонка для уточнения деталей.</p>
+</div>
+{% endif %}
 
 {% if records %}
 <div class="table-responsive">
@@ -48,5 +63,16 @@
     <div class="h1 mb-2">💳</div>
     <p class="mb-0">Пока нет закрытых заявок с начислениями.</p>
 </div>
+{% endif %}
+
+{% if withdrawal_history %}
+<h2 class="h6 mt-4 mb-2">История заявок на выплату</h2>
+{% for wr in withdrawal_history %}
+    <div class="mb-2 d-flex align-items-center gap-2">
+        <span class="status-pill {{ wr.status|status_class }}">{{ wr.get_status_display }}</span>
+        <span class="small">{{ wr.amount }} ₽, {{ wr.get_method_display }}</span>
+        <span class="text-muted small">{{ wr.completed_at|default:wr.created_at }}</span>
+    </div>
+{% endfor %}
 {% endif %}
 {% endblock %}

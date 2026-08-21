@@ -8,9 +8,16 @@ from django.views.generic import ListView
 from apps.core.mixins import RoleRequiredMixin
 from apps.orders.models import Order
 
-from .forms import RatingForm
-from .models import PaymentRecord
-from .services import mark_payment_paid, rate_collector
+from .forms import RatingForm, WithdrawalRequestForm
+from .models import PaymentRecord, WithdrawalRequest
+from .services import (
+    WithdrawalRequestError,
+    cancel_withdrawal_request,
+    complete_withdrawal_request,
+    create_withdrawal_request,
+    mark_payment_paid,
+    rate_collector,
+)
 
 User = get_user_model()
 
@@ -77,4 +84,68 @@ class PaymentHistoryView(LoginRequiredMixin, ListView):
         records = context['records']
         context['total_paid'] = sum((r.amount for r in records if r.is_paid), start=0)
         context['total_pending'] = sum((r.amount for r in records if not r.is_paid), start=0)
+        context['pending_withdrawal'] = WithdrawalRequest.objects.filter(
+            collector=self.request.user, status=WithdrawalRequest.Status.PENDING,
+        ).first()
+        context['withdrawal_history'] = WithdrawalRequest.objects.filter(
+            collector=self.request.user,
+        ).exclude(status=WithdrawalRequest.Status.PENDING)[:10]
         return context
+
+
+class WithdrawalRequestCreateView(LoginRequiredMixin, View):
+    template_name = 'payments/withdraw.html'
+
+    def get(self, request):
+        total_pending = sum(
+            (r.amount for r in PaymentRecord.objects.filter(collector=request.user, is_paid=False)), start=0,
+        )
+        form = WithdrawalRequestForm()
+        return render(request, self.template_name, {'form': form, 'total_pending': total_pending})
+
+    def post(self, request):
+        form = WithdrawalRequestForm(request.POST)
+        if not form.is_valid():
+            total_pending = sum(
+                (r.amount for r in PaymentRecord.objects.filter(collector=request.user, is_paid=False)), start=0,
+            )
+            return render(request, self.template_name, {'form': form, 'total_pending': total_pending})
+
+        try:
+            create_withdrawal_request(
+                request.user, method=form.cleaned_data['method'],
+                requisite=form.cleaned_data['requisite'], comment=form.cleaned_data['comment'],
+            )
+            messages.success(request, 'Заявка на выплату отправлена. Ожидайте звонка.')
+        except WithdrawalRequestError as exc:
+            messages.error(request, str(exc))
+        return redirect('payment_history')
+
+
+class WithdrawalRequestListView(ManagerRequiredMixin, ListView):
+    """Очередь заявок на выплату — менеджер видит, кому звонить."""
+
+    model = WithdrawalRequest
+    template_name = 'payments/withdrawal_requests.html'
+    context_object_name = 'requests'
+
+    def get_queryset(self):
+        return WithdrawalRequest.objects.filter(
+            status=WithdrawalRequest.Status.PENDING,
+        ).select_related('collector', 'collector__collector_profile').order_by('created_at')
+
+
+class WithdrawalRequestCompleteView(ManagerRequiredMixin, View):
+    def post(self, request, pk):
+        request_obj = get_object_or_404(WithdrawalRequest, pk=pk)
+        action = request.POST.get('action')
+        try:
+            if action == 'complete':
+                complete_withdrawal_request(request_obj, request.user)
+                messages.success(request, 'Выплата отмечена как произведённая.')
+            else:
+                cancel_withdrawal_request(request_obj, request.user, reason=request.POST.get('reason', ''))
+                messages.info(request, 'Заявка на выплату отменена.')
+        except WithdrawalRequestError as exc:
+            messages.error(request, str(exc))
+        return redirect('withdrawal_requests_list')
