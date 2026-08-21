@@ -12,8 +12,8 @@ from apps.core.mixins import RoleRequiredMixin
 from apps.core.models import PersonalDataAccessLog
 from apps.payments.models import Rating
 
-from .forms import CHANGE_FIELD_LABELS, CollectorRegistrationForm, ProfileEditForm
-from .models import CollectorProfile, CollectorProfileChangeRequest, PaymentDetails
+from .forms import CHANGE_FIELD_LABELS, CollectorNoteForm, CollectorRegistrationForm, ProfileEditForm
+from .models import CollectorNote, CollectorProfile, CollectorProfileChangeRequest, PaymentDetails
 from .services import approve_change_request, reject_change_request, submit_profile_change_request
 
 User = get_user_model()
@@ -64,12 +64,31 @@ class CollectorProfileDetailView(ManagerRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         ratings = Rating.objects.filter(collector=self.object.user).select_related('order').order_by('-created_at')
         context['ratings'] = ratings
+        context['reviews'] = ratings.exclude(comment='')
         # Единый источник правды — CollectorProfile.average_rating/.ratings_count
         # (используются везде: списки заявок, аналитика, уведомления). Не считаем
         # тут заново отдельной агрегацией, чтобы значения не могли разойтись.
         context['average_score'] = self.object.average_rating
         context['orders'] = self.object.user.booked_orders.order_by('-created_at')[:20]
+        context['notes'] = self.object.notes.select_related('author').all()
+        context['note_form'] = CollectorNoteForm()
         return context
+
+
+class CollectorNoteCreateView(ManagerRequiredMixin, View):
+    """Внутренняя заметка о сборщике — видна только менеджеру/админу, к заявкам
+    не привязана, нужна просто чтобы помнить, кто это такой."""
+
+    def post(self, request, user_id):
+        user = get_object_or_404(User, pk=user_id)
+        profile = get_object_or_404(CollectorProfile, user=user)
+        form = CollectorNoteForm(request.POST)
+        if form.is_valid():
+            CollectorNote.objects.create(profile=profile, author=request.user, text=form.cleaned_data['text'])
+            messages.success(request, 'Заметка добавлена.')
+        else:
+            messages.error(request, 'Не удалось сохранить заметку — текст не должен быть пустым.')
+        return redirect('collector_profile_detail', user_id=user_id)
 
 
 def _client_ip(request):

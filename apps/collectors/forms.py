@@ -209,3 +209,9 @@ class ProfileEditForm(forms.Form):
         if self.current_user and User.objects.filter(phone=phone).exclude(pk=self.current_user.pk).exists():
             raise forms.ValidationError('Этот телефон уже зарегистрирован у другого пользователя')
         return phone
+
+
+class CollectorNoteForm(forms.Form):
+    text = forms.CharField(
+        label='Заметка', widget=forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Например: договаривались о сборке по выходным, хорошо работает с техникой'}),
+    )

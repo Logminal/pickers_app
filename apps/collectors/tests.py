@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.dictionaries.models import Region
 
-from .models import CollectorProfile, CollectorProfileChangeRequest, PassportData, PaymentDetails
+from .models import CollectorNote, CollectorProfile, CollectorProfileChangeRequest, PassportData, PaymentDetails
 from .services import approve_change_request, reject_change_request, submit_profile_change_request
 
 User = get_user_model()
@@ -129,3 +129,98 @@ class ProfileChangeRequestTests(TestCase):
         self.assertEqual(self.profile.experience_years, 2)
         self.assertEqual(cr.status, CollectorProfileChangeRequest.Status.REJECTED)
         self.assertEqual(cr.review_comment, 'Не похоже на правду')
+
+
+class CollectorNoteVisibilityTests(TestCase):
+    """Заметки менеджера о сборщике — общие для всех менеджеров/админов,
+    недоступны сборщику ни при каких условиях."""
+
+    def setUp(self):
+        self.manager1 = User.objects.create_user(username='manager1', password='x', role=User.Role.MANAGER)
+        self.manager2 = User.objects.create_user(username='manager2', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector', password='x', role=User.Role.COLLECTOR)
+        self.profile = CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+
+    def test_manager_can_add_note(self):
+        client = Client()
+        client.force_login(self.manager1)
+        response = client.post(
+            reverse('collector_note_add', args=[self.collector.pk]), {'text': 'Хороший мастер'},
+        )
+        self.assertEqual(response.status_code, 302)
+        note = CollectorNote.objects.get(profile=self.profile)
+        self.assertEqual(note.text, 'Хороший мастер')
+        self.assertEqual(note.author, self.manager1)
+
+    def test_note_visible_to_other_managers(self):
+        CollectorNote.objects.create(profile=self.profile, author=self.manager1, text='Заметка от первого менеджера')
+
+        client = Client()
+        client.force_login(self.manager2)
+        response = client.get(reverse('collector_profile_detail', args=[self.collector.pk]))
+
+        self.assertContains(response, 'Заметка от первого менеджера')
+
+    def test_collector_cannot_access_own_profile_notes_page(self):
+        client = Client()
+        client.force_login(self.collector)
+        response = client.get(reverse('collector_profile_detail', args=[self.collector.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_collector_cannot_add_note(self):
+        client = Client()
+        client.force_login(self.collector)
+        response = client.post(
+            reverse('collector_note_add', args=[self.collector.pk]), {'text': 'Попытка добавить заметку'},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(CollectorNote.objects.exists())
+
+    def test_empty_note_rejected(self):
+        client = Client()
+        client.force_login(self.manager1)
+        client.post(reverse('collector_note_add', args=[self.collector.pk]), {'text': ''})
+        self.assertFalse(CollectorNote.objects.exists())
+
+
+class ReviewsDisplayTests(TestCase):
+    """Отзывы (оценки с комментарием) должны быть видны отдельно от голых оценок."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector', password='x', role=User.Role.COLLECTOR)
+        self.profile = CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+
+    def test_only_ratings_with_comment_shown_as_reviews(self):
+        from apps.dictionaries.models import FurnitureType
+        from apps.orders.models import Order
+        from apps.payments.models import Rating
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        ft = FurnitureType.objects.create(name='Кухня')
+        order_with_comment = Order.objects.create(
+            furniture_type=ft, address='ул. А, 1', scheduled_at=now, deadline_at=now, price=1000,
+            status=Order.Status.CLOSED, created_by=self.manager, collector=self.collector,
+        )
+        order_without_comment = Order.objects.create(
+            furniture_type=ft, address='ул. Б, 1', scheduled_at=now, deadline_at=now, price=1000,
+            status=Order.Status.CLOSED, created_by=self.manager, collector=self.collector,
+        )
+        Rating.objects.create(order=order_with_comment, collector=self.collector, rated_by=self.manager, score=5, comment='Отличная работа')
+        Rating.objects.create(order=order_without_comment, collector=self.collector, rated_by=self.manager, score=4, comment='')
+
+        client = Client()
+        client.force_login(self.manager)
+        response = client.get(reverse('collector_profile_detail', args=[self.collector.pk]))
+
+        self.assertEqual(len(response.context['reviews']), 1)
+        self.assertEqual(len(response.context['ratings']), 2)
+        self.assertContains(response, 'Отличная работа')

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import CollectorProfile, CollectorProfileChangeRequest, PassportData, PaymentDetails
+from .models import CollectorNote, CollectorProfile, CollectorProfileChangeRequest, PassportData, PaymentDetails
 
 
 class PassportDataInline(admin.StackedInline):
@@ -53,3 +53,9 @@ class CollectorProfileChangeRequestAdmin(admin.ModelAdmin):
     list_display = ('profile', 'status', 'created_at', 'reviewed_by', 'reviewed_at')
     list_filter = ('status',)
     readonly_fields = ('profile', 'changes', 'created_at')
+
+
+@admin.register(CollectorNote)
+class CollectorNoteAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'author', 'created_at')
+    search_fields = ('profile__full_name', 'text')

@@ -160,3 +160,26 @@ class CollectorProfileChangeRequest(TimeStampedModel):
 
     def __str__(self):
         return f'Изменение анкеты «{self.profile.full_name}» ({self.get_status_display()})'
+
+
+class CollectorNote(TimeStampedModel):
+    """Внутренняя заметка менеджера о сборщике — не привязана к конкретной заявке,
+    видна только менеджерам/админам (страница профиля сборщика и так недоступна
+    больше никому). Для памяти "кто это такой", а не для оценки качества работы —
+    для этого есть Rating."""
+
+    profile = models.ForeignKey(
+        CollectorProfile, on_delete=models.CASCADE, related_name='notes', verbose_name='Сборщик',
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name='Автор',
+    )
+    text = models.TextField('Текст заметки')
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Заметка о сборщике'
+        verbose_name_plural = 'Заметки о сборщиках'
+
+    def __str__(self):
+        return f'Заметка о {self.profile.full_name} от {self.author}'
