@@ -137,3 +137,42 @@ class OrderBookingTests(TestCase):
         cancel_order(order.pk, self.manager, reason='Клиент отказался')
         order.refresh_from_db()
         self.assertEqual(order.status, Order.Status.CANCELLED)
+
+
+class OrderCreateFormPriceValidationTests(TestCase):
+    """Поле «Стоимость» должно принимать только положительные числа."""
+
+    def setUp(self):
+        self.ft = FurnitureType.objects.create(name='Кухня')
+
+    def _form_data(self, price):
+        now = timezone.now()
+        return {
+            'furniture_type': self.ft.id, 'address': 'ул. Тестовая, 1',
+            'scheduled_at': now.strftime('%Y-%m-%dT%H:%M'),
+            'deadline_at': (now + datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+            'urgency': 'normal', 'price': price,
+        }
+
+    def test_negative_price_rejected(self):
+        from .forms import OrderCreateForm
+        form = OrderCreateForm(self._form_data('-500'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('price', form.errors)
+
+    def test_zero_price_rejected(self):
+        from .forms import OrderCreateForm
+        form = OrderCreateForm(self._form_data('0'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('price', form.errors)
+
+    def test_non_numeric_price_rejected(self):
+        from .forms import OrderCreateForm
+        form = OrderCreateForm(self._form_data('много денег'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('price', form.errors)
+
+    def test_valid_positive_price_accepted(self):
+        from .forms import OrderCreateForm
+        form = OrderCreateForm(self._form_data('15000.50'))
+        self.assertNotIn('price', form.errors)

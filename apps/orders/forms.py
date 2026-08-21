@@ -16,6 +16,8 @@ class OrderCreateForm(forms.ModelForm):
             'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'deadline_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'comment': forms.Textarea(attrs={'rows': 3}),
+            'price': forms.NumberInput(attrs={'min': '0.01', 'step': '0.01', 'inputmode': 'decimal'}),
+            'modules_count': forms.NumberInput(attrs={'min': '0', 'step': '1', 'inputmode': 'numeric'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -23,3 +25,9 @@ class OrderCreateForm(forms.ModelForm):
         for field in self.fields.values():
             existing = field.widget.attrs.get('class', '')
             field.widget.attrs['class'] = (existing + ' form-control').strip()
+
+    def clean_price(self):
+        price = self.cleaned_data['price']
+        if price <= 0:
+            raise forms.ValidationError('Стоимость должна быть положительным числом.')
+        return price

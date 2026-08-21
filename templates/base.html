@@ -121,6 +121,20 @@ document.addEventListener('DOMContentLoaded', function () {
             applyMask(input, function (d) { return d; }, 15);
         }
     });
+
+    // Числовые поля (стоимость, кол-во модулей и т.д.) — не даём вставить/ввести
+    // ничего, кроме цифр и одной десятичной точки. type="number" сам по себе не
+    // блокирует вставку произвольного текста через буфer обмена.
+    document.querySelectorAll('input[type="number"]').forEach(function (input) {
+        input.addEventListener('input', function () {
+            let value = input.value.replace(/[^\d.]/g, '');
+            const firstDot = value.indexOf('.');
+            if (firstDot !== -1) {
+                value = value.slice(0, firstDot + 1) + value.slice(firstDot + 1).replace(/\./g, '');
+            }
+            if (value !== input.value) input.value = value;
+        });
+    });
 });
 
 // Регистрация service worker'а — даёт возможность установить приложение и открыть

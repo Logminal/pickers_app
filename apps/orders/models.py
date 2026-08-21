@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.core.models import TimeStampedModel
@@ -46,7 +47,9 @@ class Order(TimeStampedModel):
     dimensions = models.CharField('Габариты', max_length=255, blank=True)
     modules_count = models.PositiveSmallIntegerField('Количество модулей', null=True, blank=True)
 
-    price = models.DecimalField('Стоимость работы', max_digits=10, decimal_places=2)
+    price = models.DecimalField(
+        'Стоимость работы', max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)],
+    )
     bitrix_deal_id = models.CharField('ID сделки в Bitrix24', max_length=50, blank=True)
 
     comment = models.TextField('Комментарий/особые условия', blank=True)

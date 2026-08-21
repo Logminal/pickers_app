@@ -11,7 +11,7 @@ from apps.dictionaries.models import FurnitureType
 from apps.orders.models import Order
 from apps.orders.services import book_order, confirm_booking
 
-from .models import Act, PhotoSlotDefinition, PhotoSlotTemplate
+from .models import Act, AdditionalWork, PhotoSlotDefinition, PhotoSlotTemplate
 from .services import close_order, review_photo_report, submit_photo_report
 
 User = get_user_model()
@@ -122,3 +122,29 @@ class PhotoReportAndActTests(TestCase):
         record = PaymentRecord.objects.get(order=self.order)
         self.assertEqual(record.amount, Decimal('10500'))
         self.assertFalse(record.is_paid)
+
+    def test_payment_record_syncs_when_additional_work_added_after_closure(self):
+        from apps.payments.models import PaymentRecord
+        from apps.payments.services import mark_payment_paid
+
+        self._submit_report()
+        review_photo_report(self.order, self.manager, accepted=True)
+        self.order.refresh_from_db()
+        Act.objects.create(
+            order=self.order, file=SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
+            uploaded_by=self.manager, is_readable_confirmed=True,
+        )
+        close_order(self.order, self.manager)
+        record = PaymentRecord.objects.get(order=self.order)
+        self.assertEqual(record.amount, Decimal('10000'))
+
+        # менеджер добавляет доп. работу уже после закрытия заявки
+        AdditionalWork.objects.create(order=self.order, description='Забыли учесть', price=Decimal('1200'))
+        record.refresh_from_db()
+        self.assertEqual(record.amount, Decimal('11200'))
+
+        # но если выплата уже отмечена произведённой — сумму задним числом не трогаем
+        mark_payment_paid(record)
+        AdditionalWork.objects.create(order=self.order, description='Ещё работа', price=Decimal('300'))
+        record.refresh_from_db()
+        self.assertEqual(record.amount, Decimal('11200'))
