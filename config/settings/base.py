@@ -112,6 +112,13 @@ TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '')
 # Узнать id чата: добавить бота в группу и отправить там команду /id.
 TELEGRAM_STAFF_GROUP_CHAT_ID = os.getenv('TELEGRAM_STAFF_GROUP_CHAT_ID', '')
 
+# MAX Bot API (п.6 ТЗ) — второй канал уведомлений, пользователь сам выбирает
+# канал(ы) в личном кабинете (см. apps/notifications). API похож на Telegram:
+# токен в заголовке Authorization, отправка POST /messages?chat_id=..,
+# получение обновлений GET /updates (long polling, курсор — marker).
+MAX_BOT_TOKEN = os.getenv('MAX_BOT_TOKEN', '')
+MAX_BOT_USERNAME = os.getenv('MAX_BOT_USERNAME', '')
+
 # Bitrix24 (п.8 ТЗ) — входящий вебхук, цена берётся из поля OPPORTUNITY сделки
 # (уточнено с заказчиком: цена хранится именно в сделке, не в товаре каталога).
 BITRIX_WEBHOOK_URL = os.getenv('BITRIX_WEBHOOK_URL', '')

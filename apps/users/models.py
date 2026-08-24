@@ -12,6 +12,10 @@ class User(AbstractUser):
     phone = models.CharField('Телефон', max_length=20, unique=True, null=True, blank=True)
     phone_confirmed = models.BooleanField('Телефон подтверждён', default=False)
     telegram_chat_id = models.CharField('Telegram chat ID', max_length=50, blank=True, null=True)
+    max_chat_id = models.CharField('MAX chat ID', max_length=50, blank=True, null=True)
+
+    notify_via_telegram = models.BooleanField('Уведомления в Telegram', default=True)
+    notify_via_max = models.BooleanField('Уведомления в MAX', default=False)
 
     class Meta:
         verbose_name = 'Пользователь'

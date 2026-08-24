@@ -10,24 +10,37 @@ from .models import NotificationLog
 logger = logging.getLogger(__name__)
 
 TELEGRAM_API_URL = 'https://api.telegram.org/bot{token}/sendMessage'
+MAX_API_URL = 'https://platform-api2.max.ru/messages'
 
 
-def notify(user, event_type, message, channel=NotificationLog.Channel.TELEGRAM):
+def notify(user, event_type, message, channels=None):
     """Синхронная отправка уведомления (без очереди — экономия памяти на слабом VDS,
     см. обсуждение архитектуры). Если начнёт тормозить запросы — тогда переходить на очередь.
 
+    Пользователь сам выбирает канал(ы) доставки в личном кабинете (notify_via_telegram/
+    notify_via_max) — по умолчанию используются они; можно передать channels явно
+    (например, notify_staff() всегда шлёт в Telegram, независимо от чьих-то настроек).
+    Создаёт по одной записи NotificationLog на каждый фактически использованный канал.
+
     Если у user роль менеджер/админ и настроен TELEGRAM_STAFF_GROUP_CHAT_ID,
-    доставка всё равно уходит в общий чат менеджеров (см. _resolve_chat_id) —
+    Telegram-доставка всё равно уходит в общий чат менеджеров (см. _resolve_chat_id) —
     но лог по-прежнему привязан к конкретному user, это не касается notify_staff().
     """
-    log = NotificationLog.objects.create(
-        user=user, channel=channel, event_type=event_type, message=message,
-    )
+    if channels is None:
+        channels = _resolve_user_channels(user)
 
-    if channel == NotificationLog.Channel.TELEGRAM:
-        _send_telegram(log)
+    logs = []
+    for channel in channels:
+        log = NotificationLog.objects.create(
+            user=user, channel=channel, event_type=event_type, message=message,
+        )
+        if channel == NotificationLog.Channel.TELEGRAM:
+            _send_telegram(log)
+        elif channel == NotificationLog.Channel.MAX:
+            _send_max(log)
+        logs.append(log)
 
-    return log
+    return logs
 
 
 def notify_staff(event_type, message):
@@ -36,7 +49,7 @@ def notify_staff(event_type, message):
 
     Если настроен общий чат менеджеров (TELEGRAM_STAFF_GROUP_CHAT_ID) — одно
     сообщение туда, без привязки к пользователю в логе. Иначе — каждому
-    менеджеру/админу отдельно (кто успел подключить свой Telegram)."""
+    менеджеру/админу отдельно, в те каналы, которые он сам выбрал в настройках."""
     if settings.TELEGRAM_STAFF_GROUP_CHAT_ID:
         log = NotificationLog.objects.create(
             user=None, channel=NotificationLog.Channel.TELEGRAM, event_type=event_type, message=message,
@@ -46,7 +59,21 @@ def notify_staff(event_type, message):
 
     User = get_user_model()
     staff = User.objects.filter(role__in=[User.Role.MANAGER, User.Role.ADMIN])
-    return [notify(u, event_type, message) for u in staff]
+    logs = []
+    for u in staff:
+        logs.extend(notify(u, event_type, message))
+    return logs
+
+
+def _resolve_user_channels(user):
+    """Каналы, выбранные пользователем в настройках. Если он случайно снял все
+    галочки — подстраховка: всё равно шлём в Telegram, чтобы не терять уведомления молча."""
+    channels = []
+    if getattr(user, 'notify_via_telegram', True):
+        channels.append(NotificationLog.Channel.TELEGRAM)
+    if getattr(user, 'notify_via_max', False):
+        channels.append(NotificationLog.Channel.MAX)
+    return channels or [NotificationLog.Channel.TELEGRAM]
 
 
 def _resolve_chat_id(log: NotificationLog):
@@ -76,5 +103,29 @@ def _send_telegram(log: NotificationLog):
         log.sent_at = timezone.now()
     except requests.RequestException:
         logger.exception('Не удалось отправить Telegram-уведомление user_id=%s', log.user_id)
+        log.status = NotificationLog.Status.FAILED
+    log.save(update_fields=['status', 'sent_at'])
+
+
+def _send_max(log: NotificationLog):
+    chat_id = getattr(log.user, 'max_chat_id', None) if log.user else None
+    if not chat_id or not settings.MAX_BOT_TOKEN:
+        log.status = NotificationLog.Status.FAILED
+        log.save(update_fields=['status'])
+        return
+
+    try:
+        response = requests.post(
+            MAX_API_URL,
+            params={'chat_id': chat_id},
+            json={'text': log.message, 'attachments': []},
+            headers={'Authorization': settings.MAX_BOT_TOKEN},
+            timeout=10,
+        )
+        response.raise_for_status()
+        log.status = NotificationLog.Status.SENT
+        log.sent_at = timezone.now()
+    except requests.RequestException:
+        logger.exception('Не удалось отправить MAX-уведомление user_id=%s', log.user_id)
         log.status = NotificationLog.Status.FAILED
     log.save(update_fields=['status', 'sent_at'])
