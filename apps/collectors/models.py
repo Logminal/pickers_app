@@ -26,7 +26,7 @@ class CollectorProfile(TimeStampedModel):
 
     full_name = models.CharField('ФИО', max_length=255)
     birth_date = models.DateField('Дата рождения')
-    birth_place = models.CharField('Место рождения', max_length=255)
+    birth_place = models.CharField('Место рождения', max_length=255, blank=True)
     profile_photo = models.ImageField('Фото профиля', upload_to='collectors/profile_photos/')
 
     status = models.CharField('Статус анкеты', max_length=20, choices=Status.choices, default=Status.DRAFT)
@@ -87,12 +87,12 @@ class PassportData(TimeStampedModel):
         CollectorProfile, on_delete=models.CASCADE, related_name='passport', verbose_name='Сборщик',
     )
 
-    series_number = models.CharField('Серия и номер паспорта', max_length=20)
-    issued_by = models.CharField('Кем выдан', max_length=255)
-    issue_date = models.DateField('Дата выдачи')
-    division_code = models.CharField('Код подразделения', max_length=10)
-    registration_address = models.TextField('Адрес регистрации')
-    actual_address = models.TextField('Адрес фактического проживания')
+    series_number = models.CharField('Серия и номер паспорта', max_length=20, blank=True)
+    issued_by = models.CharField('Кем выдан', max_length=255, blank=True)
+    issue_date = models.DateField('Дата выдачи', null=True, blank=True)
+    division_code = models.CharField('Код подразделения', max_length=10, blank=True)
+    registration_address = models.TextField('Адрес регистрации', blank=True)
+    actual_address = models.TextField('Адрес фактического проживания', blank=True)
 
     # Скан шифруется при записи и хранится вне MEDIA_ROOT — см. apps/collectors/storage.py.
     # Доступ только через PassportScanView (проверка роли + запись в PersonalDataAccessLog).

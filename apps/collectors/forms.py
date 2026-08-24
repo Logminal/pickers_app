@@ -20,16 +20,9 @@ class CollectorRegistrationForm(forms.Form):
     # Личные данные
     full_name = forms.CharField(label='ФИО (полностью, как в паспорте)')
     birth_date = forms.DateField(label='Дата рождения', widget=forms.DateInput(attrs={'type': 'date'}))
-    birth_place = forms.CharField(label='Место рождения')
     profile_photo = forms.ImageField(label='Фото профиля (селфи)')
 
     # Паспортные данные
-    passport_series_number = forms.CharField(label='Серия и номер паспорта')
-    passport_issued_by = forms.CharField(label='Кем выдан')
-    passport_issue_date = forms.DateField(label='Дата выдачи', widget=forms.DateInput(attrs={'type': 'date'}))
-    passport_division_code = forms.CharField(label='Код подразделения')
-    passport_registration_address = forms.CharField(label='Адрес регистрации', widget=forms.Textarea(attrs={'rows': 2}))
-    passport_actual_address = forms.CharField(label='Адрес фактического проживания', widget=forms.Textarea(attrs={'rows': 2}))
     passport_scan = forms.FileField(label='Скан паспорта (разворот + прописка)')
 
     # Налоговый статус
@@ -45,7 +38,6 @@ class CollectorRegistrationForm(forms.Form):
     payment_method = forms.ChoiceField(label='Способ получения оплаты', choices=PaymentDetails.Method.choices)
     card_or_account_number = forms.CharField(label='Номер карты/реквизиты', required=False)
     sbp_phone = forms.CharField(label='СБП-номер телефона', required=False)
-    cash_pickup_address = forms.CharField(label='Адрес для передачи наличных', required=False)
 
     # Профессиональные данные
     experience_years = forms.IntegerField(label='Стаж работы (лет)', min_value=0, initial=0)
@@ -104,7 +96,6 @@ class CollectorRegistrationForm(forms.Form):
             user=user,
             full_name=data['full_name'],
             birth_date=data['birth_date'],
-            birth_place=data['birth_place'],
             profile_photo=data['profile_photo'],
             status=CollectorProfile.Status.UNDER_REVIEW,
             tax_status=data['tax_status'],
@@ -120,12 +111,6 @@ class CollectorRegistrationForm(forms.Form):
 
         PassportData.objects.create(
             collector=collector,
-            series_number=data['passport_series_number'],
-            issued_by=data['passport_issued_by'],
-            issue_date=data['passport_issue_date'],
-            division_code=data['passport_division_code'],
-            registration_address=data['passport_registration_address'],
-            actual_address=data['passport_actual_address'],
             scan_file=data['passport_scan'],
         )
 
@@ -134,7 +119,6 @@ class CollectorRegistrationForm(forms.Form):
             method=data['payment_method'],
             card_or_account_number=data.get('card_or_account_number', ''),
             sbp_phone=data.get('sbp_phone', ''),
-            cash_pickup_address=data.get('cash_pickup_address', ''),
         )
 
         return user
