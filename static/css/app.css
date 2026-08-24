@@ -1,13 +1,24 @@
+/* ============================================================
+   Дизайн-система «Сборка мебели» — v3
+   Профессиональный B2B-инструмент: navy/blue, чистые поверхности,
+   без стекла и декоративных эффектов. Заголовки — Calistoga
+   (отличительный акцент), весь остальной текст — Inter.
+   ============================================================ */
+
 :root {
-  --brand: #4338ca;
-  --brand-dark: #3730a3;
-  --brand-light: #eef2ff;
   --ink: #0f172a;
   --ink-muted: #64748b;
   --ink-faint: #94a3b8;
+
+  --brand: #0369a1;
+  --brand-dark: #075985;
+  --brand-light: #e0f2fe;
+
   --border: #e2e8f0;
-  --bg: #f7f8fb;
+  --bg: #f8fafc;
   --surface: #ffffff;
+  --neutral-bg: #eef2f6;
+
   --success: #16a34a;
   --success-bg: #ecfdf5;
   --warning: #d97706;
@@ -16,68 +27,55 @@
   --danger-bg: #fef2f2;
   --info: #2563eb;
   --info-bg: #eff6ff;
-  --neutral-bg: #f1f5f9;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.04);
 
-  /* Стекло (Apple-стиль) — держим достаточно непрозрачным (не 15-30%, как в
-     классическом glassmorphism): это рабочий инструмент с плотным текстом и
-     таблицами, а не промо-страница, поэтому контраст важнее декоративности. */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-bg-strong: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-blur: blur(20px) saturate(160%);
-  --glass-blur-sm: blur(12px) saturate(140%);
+  --radius: 10px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.05);
+
+  --font-display: 'Calistoga', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-/* Мягкий цветной фон на всю страницу — без него стеклянные панели не будут
-   заметны (полупрозрачной белой поверхности не на чем "показать" блюр). */
-html {
-  background:
-    radial-gradient(1100px 600px at 12% -10%, rgba(99, 102, 241, 0.16), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(14, 165, 233, 0.12), transparent 55%),
-    radial-gradient(800px 500px at 20% 100%, rgba(236, 72, 153, 0.08), transparent 55%),
-    var(--bg);
-  background-attachment: fixed;
-}
+html, body { background: var(--bg); }
 
 body {
-  background: transparent;
   color: var(--ink);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
   font-size: 0.95rem;
   line-height: 1.55;
 }
 
-h1, h2, h3, h4, h5, .navbar-brand {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* Заголовок страницы (h1.h4 на большинстве экранов) — единственное место, где
+   используется дисплейный шрифт. Остальные уровни (карточки, секции) остаются
+   на Inter: серифный шрифт в мелком размере в плотном интерфейсе только мешает. */
+h1, .h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+h2, h3, h4, h5, h6, .navbar-brand {
+  font-family: var(--font-body);
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
   line-height: 1.25;
 }
-.h4, h4 { font-size: 1.4rem; }
+.h4, h1.h4 { font-size: 1.55rem; }
 .h6, h6 { font-size: 0.95rem; }
 
-a { color: var(--brand); }
+a { color: var(--brand); text-decoration-color: rgba(3, 105, 161, 0.35); }
 a:hover { color: var(--brand-dark); }
 
-/* Навбар — тонированное стекло поверх контента, как полупрозрачные тулбары в
-   macOS/iOS (Apple HIG: blur обозначает "плавающий" слой над контентом). */
+/* Навбар — сплошной, тёмно-синий, без блюра */
 .navbar.app-navbar {
-  background: rgba(15, 23, 42, 0.82) !important;
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  background: var(--ink) !important;
   padding-top: 0.85rem;
   padding-bottom: 0.85rem;
-  position: sticky;
-  top: 0;
-  z-index: 1030;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 24px rgba(15,23,42,0.12);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 2px 8px rgba(15,23,42,0.15);
 }
 .app-navbar .navbar-brand {
   font-weight: 800;
@@ -120,43 +118,27 @@ a:hover { color: var(--brand-dark); }
 }
 .app-navbar .nav-link.btn-link:hover { color: #fff !important; }
 
-/* Карточки-контейнеры — матовое стекло (Apple-стиль): достаточно непрозрачное,
-   чтобы текст оставался чётким, но с блюром фона для ощущения глубины. */
-.card, .content-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+/* Карточки-контейнеры — сплошная белая поверхность, чёткая граница, мягкая тень */
+.card, .content-card, .table-responsive {
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  -webkit-backdrop-filter: var(--glass-blur-sm);
-  backdrop-filter: var(--glass-blur-sm);
 }
 .content-card {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
-/* Таблицы — плотный текст, поэтому стекло здесь более непрозрачное (почти
-   сплошное): избыточная прозрачность на дата-таблице вредит читаемости
-   (см. anti-pattern "не глушить контраст декоративностью"). */
-.table-responsive {
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  -webkit-backdrop-filter: var(--glass-blur-sm);
-  backdrop-filter: var(--glass-blur-sm);
-}
-
-/* Карточки заявок в сетке (список доступных заявок и т.п.) — кликабельно ощущаются */
+/* Карточки заявок в сетке — кликабельно ощущаются */
 .card {
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .card:has(a.stretched-link):hover,
 .row.g-3 .card:hover {
   box-shadow: var(--shadow-md);
-  border-color: rgba(67, 56, 202, 0.25);
-  background: var(--glass-bg-strong);
-  transform: translateY(-1px);
+  border-color: #b6d9ec;
+  transform: translateY(-2px);
 }
 
 /* Кнопки */
@@ -169,14 +151,14 @@ a:hover { color: var(--brand-dark); }
 }
 .btn:active { transform: translateY(1px); }
 .btn-primary {
-  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0)), var(--brand);
+  background: var(--brand);
   border-color: var(--brand);
-  box-shadow: 0 1px 2px rgba(67,56,202,0.15);
+  box-shadow: 0 1px 2px rgba(3,105,161,0.2);
 }
 .btn-primary:hover, .btn-primary:focus {
   background: var(--brand-dark);
   border-color: var(--brand-dark);
-  box-shadow: 0 4px 12px rgba(67,56,202,0.25);
+  box-shadow: 0 4px 12px rgba(3,105,161,0.28);
 }
 .btn-outline-primary {
   color: var(--brand);
@@ -232,40 +214,37 @@ a:hover { color: var(--brand-dark); }
 .status-neutral   { background: var(--neutral-bg); color: var(--ink-muted); }
 .status-warning   { background: var(--warning-bg); color: var(--warning); }
 .status-info      { background: var(--info-bg);    color: var(--info); }
-.status-brand     { background: var(--brand-light); color: var(--brand); }
+.status-brand     { background: var(--brand-light); color: var(--brand-dark); }
 .status-success   { background: var(--success-bg); color: var(--success); }
 .status-danger    { background: var(--danger-bg);  color: var(--danger); }
 
 /* Карточки-статистика (сводка менеджера) */
 .stat-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  -webkit-backdrop-filter: var(--glass-blur-sm);
-  backdrop-filter: var(--glass-blur-sm);
   padding: 1.1rem 1.3rem;
   text-decoration: none;
   display: block;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .stat-card:hover {
   border-color: var(--brand);
   box-shadow: var(--shadow-md);
-  background: var(--glass-bg-strong);
   transform: translateY(-2px);
 }
 .stat-card .stat-value {
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.9rem;
   color: var(--ink);
   line-height: 1;
-  letter-spacing: -0.02em;
 }
 .stat-card .stat-label {
   font-size: 0.8rem;
   color: var(--ink-muted);
-  margin-top: 0.4rem;
+  margin-top: 0.45rem;
   font-weight: 500;
 }
 .stat-card.stat-active { border-left: 3px solid var(--brand); }
@@ -278,10 +257,6 @@ a:hover { color: var(--brand-dark); }
   color: var(--ink);
   margin-bottom: 0.35rem;
 }
-/* Инпуты и селекты — мягкая "утопленная" заливка вместо чистого белого:
-   стекло вокруг уже полупрозрачное, а поля ввода должны читаться однозначно,
-   поэтому у них своя, более контрастная плоскость (Apple HIG: системные
-   поля ввода — sunken fill, не декоративное стекло). */
 .form-control, .form-select,
 input[type="text"]:not(.form-check-input),
 input[type="password"],
@@ -293,7 +268,7 @@ input[type="number"],
 input[type="file"],
 select,
 textarea {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.85rem;
@@ -301,28 +276,25 @@ textarea {
   width: 100%;
   box-sizing: border-box;
   color: var(--ink);
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .form-control::placeholder, textarea::placeholder { color: var(--ink-faint); }
 .form-control:hover, .form-select:hover,
 input:not([type="checkbox"]):not([type="radio"]):not(:disabled):hover,
 select:not(:disabled):hover, textarea:not(:disabled):hover {
-  border-color: #c7cee0;
+  border-color: #b9c3d1;
 }
 .form-control:focus, .form-select:focus,
 input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus,
 input[type="date"]:focus, input[type="datetime-local"]:focus, input[type="tel"]:focus,
 input[type="number"]:focus, textarea:focus, select:focus {
   outline: none;
-  background: #fff;
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(67,56,202,0.14), inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 0 0 3px rgba(3,105,161,0.15);
 }
 .form-control:disabled, .form-select:disabled, input:disabled, select:disabled, textarea:disabled {
   background: var(--neutral-bg);
   color: var(--ink-faint);
-  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -358,7 +330,6 @@ textarea { resize: vertical; min-height: 5.5rem; }
   height: 1.15em;
   margin-left: -1.6em;
   border-color: var(--border);
-  box-shadow: none;
 }
 .form-check-input:checked {
   background-color: var(--brand);
@@ -366,7 +337,7 @@ textarea { resize: vertical; min-height: 5.5rem; }
 }
 .form-check-input:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(67,56,202,0.14);
+  box-shadow: 0 0 0 3px rgba(3,105,161,0.15);
 }
 .form-check-label { padding-top: 0.05em; }
 
@@ -394,15 +365,13 @@ textarea { resize: vertical; min-height: 5.5rem; }
   justify-content: center;
 }
 .auth-card {
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 2rem;
   width: 100%;
   max-width: 420px;
   box-shadow: var(--shadow-lg);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
 }
 
 /* Пустое состояние */
@@ -410,13 +379,11 @@ textarea { resize: vertical; min-height: 5.5rem; }
   text-align: center;
   padding: 3.5rem 1.5rem;
   color: var(--ink-muted);
-  background: var(--glass-bg);
-  border: 1px dashed rgba(148, 163, 184, 0.4);
+  background: var(--surface);
+  border: 1px dashed #cbd5e1;
   border-radius: var(--radius);
-  -webkit-backdrop-filter: var(--glass-blur-sm);
-  backdrop-filter: var(--glass-blur-sm);
 }
-.empty-state .h1 { opacity: 0.7; }
+.empty-state .h1 { opacity: 0.7; font-family: var(--font-body); font-weight: 700; }
 
 /* Уведомления (django.contrib.messages) — единый стиль со status-pill */
 .alert {
@@ -449,11 +416,11 @@ textarea { resize: vertical; min-height: 5.5rem; }
 
   /* stat-card сетка и так становится однoколоночной (Bootstrap col-md-*), просто убираем лишний воздух */
   .stat-card { padding: 0.85rem 1rem; }
-  .stat-card .stat-value { font-size: 1.4rem; }
+  .stat-card .stat-value { font-size: 1.5rem; }
 }
 
 /* Очень узкие экраны (iPhone SE и т.п.) */
 @media (max-width: 375px) {
   .content-card { padding: 0.75rem; }
-  h1.h4 { font-size: 1.15rem; }
+  h1.h4 { font-size: 1.3rem; }
 }
