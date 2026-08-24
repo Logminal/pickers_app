@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from apps.core.templatetags.ui_extras import basename, initials
+from apps.core.templatetags.ui_extras import basename, initials, stars
 
 
 class InitialsFilterTests(TestCase):
@@ -34,3 +34,22 @@ class BasenameFilterTests(TestCase):
     def test_empty_value(self):
         self.assertEqual(basename(None), '')
         self.assertEqual(basename(''), '')
+
+
+class StarsFilterTests(TestCase):
+    def test_full_score(self):
+        self.assertEqual(stars(5), '★★★★★')
+
+    def test_partial_score(self):
+        self.assertEqual(stars(3), '★★★☆☆')
+
+    def test_zero_score(self):
+        self.assertEqual(stars(0), '☆☆☆☆☆')
+
+    def test_clamps_out_of_range(self):
+        self.assertEqual(stars(9), '★★★★★')
+        self.assertEqual(stars(-2), '☆☆☆☆☆')
+
+    def test_invalid_value(self):
+        self.assertEqual(stars(None), '')
+        self.assertEqual(stars('not-a-number'), '')

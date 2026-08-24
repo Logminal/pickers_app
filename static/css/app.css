@@ -546,6 +546,116 @@ a:hover { color: var(--brand-dark); }
 .timeline-comment { margin-top: 0.2rem; font-weight: 500; font-size: 0.83rem; color: var(--ink-muted); }
 .timeline-date { margin-top: 0.25rem; font-weight: 600; font-size: 0.72rem; color: var(--ink-faint); }
 
+/* ============================================================
+   Профиль сборщика (вид менеджера) — по макету Claude Design
+   ============================================================ */
+
+.profile-header { display: flex; gap: 0.8rem; align-items: flex-start; margin-top: 0.3rem; }
+.profile-avatar-col { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0.45rem; }
+.profile-avatar, .profile-avatar-photo {
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+.profile-avatar {
+  background: var(--brand-light);
+  border: 1px solid rgba(138,53,39,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--brand);
+}
+.profile-status-pill { font-size: 0.62rem; padding: 0.25rem 0.4rem; white-space: nowrap; }
+.profile-header-body { flex: 1; min-width: 0; padding-top: 0.1rem; }
+.profile-header-name { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; color: var(--ink); }
+.profile-header-meta { font-weight: 600; font-size: 0.75rem; color: var(--ink-muted); margin-top: 0.25rem; }
+.profile-header-rating { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.45rem; flex-wrap: wrap; }
+.profile-rating-value { font-weight: 800; font-size: 0.9rem; color: #c9922b; }
+.profile-rating-count { font-weight: 600; font-size: 0.75rem; color: var(--ink-muted); }
+
+.profile-field-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.profile-field-row-last { border-bottom: none; }
+.profile-field-label {
+  flex: none;
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 0.1rem;
+}
+.profile-field-value { flex: 1; text-align: right; font-weight: 600; font-size: 0.87rem; color: var(--ink); }
+.profile-field-value-good { color: var(--success); }
+.profile-field-value-rating { color: #c9922b; font-weight: 800; }
+
+.passport-box {
+  background: var(--brand-light);
+  border: 1px solid rgba(138,53,39,0.18);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.5rem;
+}
+.passport-box .btn-action { margin-bottom: 0; }
+.passport-box-note { margin-top: 0.6rem; font-weight: 600; font-size: 0.72rem; line-height: 1.45; color: var(--warning); }
+
+.job-list { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.job-card, .review-card, .note-card {
+  display: block;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  background: #faf8f7;
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+}
+a.job-card:hover { background: var(--brand-light); }
+.job-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.job-card-title { min-width: 0; display: flex; align-items: baseline; gap: 0.4rem; }
+.job-card-num { font-weight: 800; font-size: 0.85rem; color: var(--brand); }
+.job-card-type { font-weight: 700; font-size: 0.83rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-card-status { flex: none; font-size: 0.6rem; padding: 0.25rem 0.4rem; }
+.job-card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; font-weight: 600; font-size: 0.72rem; color: var(--ink-muted); }
+.job-card-sum { font-weight: 800; font-size: 0.83rem; color: var(--ink); }
+
+.review-stars { font-weight: 800; font-size: 0.85rem; color: #c9922b; letter-spacing: 0.05em; }
+.review-order-link { font-weight: 700; font-size: 0.75rem; }
+.review-text { margin: 0.5rem 0 0; font-weight: 500; font-size: 0.82rem; line-height: 1.5; color: #4a4340; }
+.review-flags { margin-top: 0.55rem; margin-bottom: 0; }
+.order-tag-late { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(138,91,18,0.2); }
+.review-date { margin-top: 0.5rem; font-weight: 600; font-size: 0.68rem; color: var(--ink-faint); }
+
+.rating-grid { margin-top: 0.75rem; display: grid; grid-template-columns: auto 1fr auto auto; gap: 0 0.5rem; align-items: center; }
+.rating-grid-head { font-weight: 700; font-size: 0.6rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); padding-bottom: 0.5rem; }
+.rating-grid-center { text-align: center; }
+.rating-grid-num { font-weight: 700; font-size: 0.8rem; padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.rating-grid-score { min-width: 0; padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.rating-grid-score > span:first-child { display: block; font-weight: 800; font-size: 0.8rem; color: #c9922b; }
+.rating-grid-comment { display: block; margin-top: 0.15rem; font-weight: 500; font-size: 0.7rem; color: var(--ink-muted); }
+.rating-grid-mark { font-weight: 700; font-size: 0.78rem; padding: 0.55rem 0; border-top: 1px solid var(--border); color: var(--ink-faint); }
+.rating-grid-mark-ok { color: var(--success); }
+.rating-grid-mark-bad { color: var(--danger); }
+.rating-grid-empty { grid-column: 1 / -1; color: var(--ink-muted); padding: 0.5rem 0; }
+
+.notes-card { background: #fefaf1; border-color: rgba(138,91,18,0.18); }
+.notes-internal-tag { font-weight: 700; font-size: 0.6rem; letter-spacing: 0.04em; padding: 0.25rem 0.4rem; border-radius: 6px; background: var(--warning); color: #fff; }
+.notes-note { margin: 0.3rem 0 0; font-weight: 600; font-size: 0.7rem; line-height: 1.45; color: var(--warning); }
+.notes-form { margin-top: 0.75rem; }
+.notes-form textarea { resize: none; height: 4.6rem; }
+.notes-form .btn-action { margin-top: 0.5rem; }
+.notes-list { margin-top: 0.75rem; }
+.note-text { margin: 0; font-weight: 500; font-size: 0.82rem; line-height: 1.5; color: #4a4340; }
+.note-meta { margin-top: 0.5rem; font-weight: 600; font-size: 0.68rem; color: var(--ink-faint); }
+
 /* Формы */
 .form-label { font-weight: 700; font-size: 0.85rem; color: var(--ink); margin-bottom: 0.35rem; }
 .form-control, .form-select,

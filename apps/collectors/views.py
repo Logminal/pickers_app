@@ -69,7 +69,9 @@ class CollectorProfileDetailView(ManagerRequiredMixin, DetailView):
         # (используются везде: списки заявок, аналитика, уведомления). Не считаем
         # тут заново отдельной агрегацией, чтобы значения не могли разойтись.
         context['average_score'] = self.object.average_rating
-        context['orders'] = self.object.user.booked_orders.order_by('-created_at')[:20]
+        all_orders = self.object.user.booked_orders.order_by('-created_at')
+        context['total_orders_count'] = all_orders.count()
+        context['orders'] = all_orders[:20]
         context['notes'] = self.object.notes.select_related('author').all()
         context['note_form'] = CollectorNoteForm()
         return context

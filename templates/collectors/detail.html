@@ -2,136 +2,153 @@
 {% load ui_extras %}
 {% block title %}Профиль сборщика — {{ profile.full_name }}{% endblock %}
 {% block content %}
-<div class="content-card">
-    <div class="row">
-        <div class="col-md-3 text-center mb-4 mb-md-0">
+<div class="order-sticky-header">
+    <a href="{% url 'manager_order_list' %}" class="order-back-link">&larr; Заявки</a>
+
+    <div class="profile-header">
+        <div class="profile-avatar-col">
             {% if profile.profile_photo %}
-                <img src="{{ profile.profile_photo.url }}" class="img-fluid rounded mb-2" alt="{{ profile.full_name }}">
+                <img src="{{ profile.profile_photo.url }}" class="profile-avatar-photo" alt="{{ profile.full_name }}">
             {% else %}
-                <div class="d-flex align-items-center justify-content-center rounded mb-2" style="background: var(--neutral-bg); height: 180px; font-size: 2rem;">👤</div>
+                <div class="profile-avatar">{{ profile.full_name|initials }}</div>
             {% endif %}
-            <span class="status-pill {{ profile.status|status_class }}">{{ profile.get_status_display }}</span>
+            <span class="status-pill {{ profile.status|status_class }} profile-status-pill">{{ profile.get_status_display }}</span>
         </div>
-        <div class="col-md-9">
-            <h1 class="h4 mb-1">{{ profile.full_name }}</h1>
-            <p class="text-muted small mb-3">ID сборщика: {{ profile.user.pk }} · анкета #{{ profile.pk }}</p>
-
-            <table class="table table-sm w-auto">
-                <tr><th>Телефон</th><td>{{ profile.user.phone|default:'—' }}</td></tr>
-                <tr><th>Email</th><td>{{ profile.user.email|default:'—' }}</td></tr>
-                <tr><th>Дата рождения</th><td>{{ profile.birth_date }}</td></tr>
-                <tr><th>Регион</th><td>{{ profile.region|default:'—' }}</td></tr>
-                <tr><th>Специализации</th><td>{% for s in profile.specializations.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td></tr>
-                <tr><th>Стаж</th><td>{{ profile.experience_years }} лет</td></tr>
-                <tr><th>Инструмент</th><td>{% if profile.has_own_tools %}Есть{% else %}Нет{% endif %}</td></tr>
-                <tr><th>Автомобиль</th><td>{% if profile.has_car %}Есть{% else %}Нет{% endif %}</td></tr>
-                <tr>
-                    <th>Средний рейтинг</th>
-                    <td>
-                        {% if average_score %}
-                            <span class="fw-bold">⭐ {{ average_score|floatformat:1 }}</span> / 5 ({{ ratings|length }} оценок)
-                        {% else %}
-                            <span class="text-muted">Пока нет оценок</span>
-                        {% endif %}
-                    </td>
-                </tr>
-            </table>
-
-            {% if user.role == 'admin' or user.is_superuser %}
-                {% if profile.passport %}
-                    <a href="{% url 'passport_scan_view' profile.user.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                        🔒 Открыть скан паспорта
-                    </a>
-                    <p class="text-muted small mt-1 mb-0">Доступ к скану фиксируется в журнале персональных данных (152-ФЗ).</p>
+        <div class="profile-header-body">
+            <div class="profile-header-name">{{ profile.full_name }}</div>
+            <div class="profile-header-meta">ID сборщика: {{ profile.user.pk }} · анкета #{{ profile.pk }}</div>
+            <div class="profile-header-rating">
+                {% if average_score %}
+                    <span class="profile-rating-value">★ {{ average_score|floatformat:1 }}</span>
+                    <span class="profile-rating-count">{{ ratings|length }} оценок · {{ total_orders_count }} заявок</span>
+                {% else %}
+                    <span class="profile-rating-count">Пока нет оценок · {{ total_orders_count }} заявок</span>
                 {% endif %}
-            {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
-<div class="content-card">
-    <h2 class="h6 mb-3">История заявок</h2>
-    <div class="table-responsive">
-    <table class="table table-hover table-sm mb-0">
-        <thead><tr><th>#</th><th>Тип</th><th>Статус</th><th>Срок сдачи</th><th>Сумма</th></tr></thead>
-        <tbody>
-        {% for order in orders %}
-            <tr>
-                <td><a href="{% url 'manager_order_detail' order.pk %}">#{{ order.pk }}</a></td>
-                <td>{{ order.furniture_type }}</td>
-                <td><span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span></td>
-                <td>{{ order.deadline_at }}</td>
-                <td>{{ order.total_price }} ₽</td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-3">Заявок пока нет.</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
+<div class="content-card order-info-card">
+    <div class="profile-field-row"><span class="profile-field-label">Телефон</span><span class="profile-field-value">{{ profile.user.phone|default:'—' }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Email</span><span class="profile-field-value">{{ profile.user.email|default:'—' }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Дата рождения</span><span class="profile-field-value">{{ profile.birth_date }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Регион</span><span class="profile-field-value">{{ profile.region|default:'—' }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Специализации</span><span class="profile-field-value">{% for s in profile.specializations.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Стаж</span><span class="profile-field-value">{{ profile.experience_years }} лет</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Свой инструмент</span><span class="profile-field-value{% if profile.has_own_tools %} profile-field-value-good{% endif %}">{% if profile.has_own_tools %}Да{% else %}Нет{% endif %}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Автомобиль</span><span class="profile-field-value{% if profile.has_car %} profile-field-value-good{% endif %}">{% if profile.has_car %}Да{% else %}Нет{% endif %}</span></div>
+    <div class="profile-field-row profile-field-row-last"><span class="profile-field-label">Средний рейтинг</span><span class="profile-field-value profile-field-value-rating">{% if average_score %}★ {{ average_score|floatformat:1 }} / 5{% else %}Пока нет оценок{% endif %}</span></div>
 </div>
 
-<div class="content-card">
-    <h2 class="h6 mb-3">💬 Отзывы</h2>
-    {% if reviews %}
-        {% for review in reviews %}
-            <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-                <div class="d-flex justify-content-between align-items-start mb-1">
-                    <span class="fw-bold">⭐ {{ review.score }}/5</span>
-                    <a href="{% url 'manager_order_detail' review.order_id %}" class="text-muted small">Заявка #{{ review.order_id }}</a>
-                </div>
-                <p class="mb-1">{{ review.comment }}</p>
-                <div class="d-flex flex-wrap gap-2">
-                    {% if review.had_complaint %}<span class="status-pill status-danger">Была рекламация</span>{% endif %}
-                    {% if not review.deadline_met %}<span class="status-pill status-warning">Срок не соблюдён</span>{% endif %}
-                    <span class="text-muted small">{{ review.created_at }}</span>
-                </div>
-            </div>
-        {% endfor %}
-    {% else %}
-        <p class="text-muted mb-0">Отзывов с комментарием пока нет.</p>
+{% if user.role == 'admin' or user.is_superuser %}
+    {% if profile.passport %}
+    <div class="passport-box">
+        <a href="{% url 'passport_scan_view' profile.user.pk %}" target="_blank" class="btn-action btn-action-primary"
+           onclick="return confirm('Открыть скан паспорта? Доступ к персональным документам логируется: фиксируются ваш ID, время и IP.');">
+            🔒 Открыть скан паспорта
+        </a>
+        <div class="passport-box-note">Доступ к персональным документам логируется: фиксируются ваш ID, время и IP.</div>
+    </div>
     {% endif %}
-</div>
+{% endif %}
 
 <div class="content-card">
-    <h2 class="h6 mb-3">Оценки</h2>
-    <div class="table-responsive">
-    <table class="table table-hover table-sm mb-0">
-        <thead><tr><th>Заявка</th><th>Оценка</th><th>Срок соблюдён</th><th>Рекламация</th><th>Комментарий</th></tr></thead>
-        <tbody>
-        {% for rating in ratings %}
-            <tr>
-                <td><a href="{% url 'manager_order_detail' rating.order_id %}">#{{ rating.order_id }}</a></td>
-                <td>{{ rating.score }}/5</td>
-                <td>{% if rating.deadline_met %}Да{% else %}Нет{% endif %}</td>
-                <td>{% if rating.had_complaint %}<span class="status-pill status-danger">Да</span>{% else %}Нет{% endif %}</td>
-                <td>{{ rating.comment|default:'—' }}</td>
-            </tr>
+    <div class="section-title-row">
+        <span class="section-title">История заявок</span>
+        <span class="log-count">{{ total_orders_count }} всего</span>
+    </div>
+    <div class="job-list">
+        {% for order in orders %}
+        <a href="{% url 'manager_order_detail' order.pk %}" class="job-card">
+            <div class="job-card-top">
+                <div class="job-card-title"><span class="job-card-num">#{{ order.pk }}</span><span class="job-card-type">{{ order.furniture_type }}</span></div>
+                <span class="status-pill {{ order.status|status_class }} job-card-status">{{ order.get_status_display }}</span>
+            </div>
+            <div class="job-card-bottom">
+                <span>Срок: {{ order.deadline_at }}</span>
+                <span class="job-card-sum">{{ order.total_price }} ₽</span>
+            </div>
+        </a>
         {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-3">Оценок пока нет.</td></tr>
+            <p class="text-muted mb-0">Заявок пока нет.</p>
         {% endfor %}
-        </tbody>
-    </table>
     </div>
 </div>
 
 <div class="content-card">
-    <h2 class="h6 mb-1">📝 Заметки менеджера</h2>
-    <p class="text-muted small mb-3">Видно только менеджерам и админам. Не связано с заявками — просто чтобы помнить, кто это такой.</p>
+    <div class="section-title-row">
+        <span class="section-title">💬 Отзывы</span>
+        <span class="log-count">{{ reviews|length }} из {{ ratings|length }}</span>
+    </div>
+    <div class="job-list">
+        {% for review in reviews %}
+        <div class="review-card">
+            <div class="job-card-top">
+                <span class="review-stars">{{ review.score|stars }}</span>
+                <a href="{% url 'manager_order_detail' review.order_id %}" class="review-order-link">#{{ review.order_id }}</a>
+            </div>
+            <p class="review-text">{{ review.comment }}</p>
+            {% if review.had_complaint or not review.deadline_met %}
+            <div class="order-tags review-flags">
+                {% if review.had_complaint %}<span class="order-tag order-tag-overdue">БЫЛА РЕКЛАМАЦИЯ</span>{% endif %}
+                {% if not review.deadline_met %}<span class="order-tag order-tag-late">СРОК НЕ СОБЛЮДЁН</span>{% endif %}
+            </div>
+            {% endif %}
+            <div class="review-date">{{ review.created_at }}</div>
+        </div>
+        {% empty %}
+            <p class="text-muted mb-0">Отзывов с комментарием пока нет.</p>
+        {% endfor %}
+    </div>
+</div>
 
-    <form method="post" action="{% url 'collector_note_add' profile.user.pk %}" class="mb-4">
+<div class="content-card">
+    <div class="section-title-row">
+        <span class="section-title">Оценки</span>
+        {% if average_score %}<span class="log-count">средняя ★ {{ average_score|floatformat:1 }}</span>{% endif %}
+    </div>
+    <div class="rating-grid">
+        <div class="rating-grid-head">Заявка</div>
+        <div class="rating-grid-head">Оценка</div>
+        <div class="rating-grid-head rating-grid-center">Срок</div>
+        <div class="rating-grid-head rating-grid-center">Реклам.</div>
+        {% for rating in ratings %}
+            <a href="{% url 'manager_order_detail' rating.order_id %}" class="rating-grid-num">#{{ rating.order_id }}</a>
+            <div class="rating-grid-score">
+                <span>★ {{ rating.score }}</span>
+                {% if rating.comment %}<span class="rating-grid-comment">{{ rating.comment }}</span>{% endif %}
+            </div>
+            <span class="rating-grid-mark {% if rating.deadline_met %}rating-grid-mark-ok{% else %}rating-grid-mark-bad{% endif %} rating-grid-center">{% if rating.deadline_met %}✓{% else %}✕{% endif %}</span>
+            <span class="rating-grid-mark {% if rating.had_complaint %}rating-grid-mark-bad{% endif %} rating-grid-center">{% if rating.had_complaint %}✕{% else %}—{% endif %}</span>
+        {% empty %}
+            <div class="rating-grid-empty">Оценок пока нет.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="content-card notes-card">
+    <div class="section-title-row">
+        <span class="section-title">📝 Заметки менеджера</span>
+        <span class="notes-internal-tag">ВНУТРЕННЕЕ</span>
+    </div>
+    <p class="notes-note">Не связано с заявками, сборщик не видит эти записи.</p>
+
+    <form method="post" action="{% url 'collector_note_add' profile.user.pk %}" class="notes-form">
         {% csrf_token %}
         {{ note_form.text }}
-        <button type="submit" class="btn btn-sm btn-primary mt-2">Добавить заметку</button>
+        <button type="submit" class="btn-action btn-action-primary">Добавить заметку</button>
     </form>
 
-    {% for note in notes %}
-        <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-            <p class="mb-1">{{ note.text }}</p>
-            <p class="text-muted small mb-0">{{ note.author|default:'—' }} · {{ note.created_at }}</p>
-        </div>
-    {% empty %}
-        <p class="text-muted mb-0">Заметок пока нет.</p>
-    {% endfor %}
+    <div class="job-list notes-list">
+        {% for note in notes %}
+            <div class="note-card">
+                <p class="note-text">{{ note.text }}</p>
+                <div class="note-meta">{{ note.author|default:'—' }} · {{ note.created_at }}</div>
+            </div>
+        {% empty %}
+            <p class="text-muted mb-0">Заметок пока нет.</p>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

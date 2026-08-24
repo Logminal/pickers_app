@@ -58,6 +58,16 @@ def initials(full_name):
 
 
 @register.filter
+def stars(score):
+    """5 -> «★★★★★», 3 -> «★★★☆☆» — визуальная оценка для карточек отзывов."""
+    try:
+        score = max(0, min(5, int(score)))
+    except (TypeError, ValueError):
+        return ''
+    return '★' * score + '☆' * (5 - score)
+
+
+@register.filter
 def basename(file_field):
     """Имя файла без пути хранилища, для карточки вложения."""
     if not file_field:
