@@ -2,21 +2,23 @@
 {% load ui_extras %}
 {% block title %}Заявка #{{ order.pk }}{% endblock %}
 {% block content %}
-<a href="{% url 'manager_order_list' %}" class="order-back-link">&larr; Все заявки</a>
+<div class="order-sticky-header">
+    <a href="{% url 'manager_order_list' %}" class="order-back-link">&larr; Все заявки</a>
 
-<div class="order-header">
-    <div>
-        <div class="order-header-title">Заявка #{{ order.pk }}</div>
-        <div class="order-header-subtitle">{{ order.furniture_type }}</div>
+    <div class="order-header">
+        <div>
+            <div class="order-header-title">Заявка #{{ order.pk }}</div>
+            <div class="order-header-subtitle">{{ order.furniture_type }}</div>
+        </div>
+        <span class="status-pill {{ order.status|status_class }} order-header-status">{{ order.get_status_display }}</span>
     </div>
-    <span class="status-pill {{ order.status|status_class }} order-header-status">{{ order.get_status_display }}</span>
+    {% if order.urgency == 'urgent' or order.is_overdue %}
+    <div class="order-tags">
+        {% if order.urgency == 'urgent' %}<span class="order-tag order-tag-urgent">СРОЧНАЯ</span>{% endif %}
+        {% if order.is_overdue %}<span class="order-tag order-tag-overdue">ПРОСРОЧЕНО</span>{% endif %}
+    </div>
+    {% endif %}
 </div>
-{% if order.urgency == 'urgent' or order.is_overdue %}
-<div class="order-tags">
-    {% if order.urgency == 'urgent' %}<span class="order-tag order-tag-urgent">СРОЧНАЯ</span>{% endif %}
-    {% if order.is_overdue %}<span class="order-tag order-tag-overdue">ПРОСРОЧЕНО</span>{% endif %}
-</div>
-{% endif %}
 
 <div class="content-card order-info-card">
     <div class="info-row">

@@ -237,6 +237,19 @@ a:hover { color: var(--brand-dark); }
    Карточка заявки — по макету Claude Design
    ============================================================ */
 
+/* Шапка заявки (кнопка назад + заголовок + теги) прилипает к верху при
+   скролле — как в референсе (там она вне скроллируемой зоны телефона).
+   Наш navbar не sticky, поэтому она "подхватывает" эту роль сама. */
+.order-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 0.85rem 0 0.7rem;
+  margin: -0.85rem 0 0.5rem;
+  box-shadow: 0 4px 12px rgba(29,22,20,0.05);
+}
+
 .order-back-link {
   display: inline-flex;
   align-items: center;
