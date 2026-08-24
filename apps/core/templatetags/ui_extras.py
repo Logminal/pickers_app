@@ -45,3 +45,22 @@ def get_item(dictionary, key):
     if not dictionary:
         return None
     return dictionary.get(key, key)
+
+
+@register.filter
+def initials(full_name):
+    """«Игорь Мельников» -> «ИМ» — для аватара-плашки без фото."""
+    if not full_name:
+        return '?'
+    parts = str(full_name).split()
+    letters = ''.join(p[0] for p in parts[:2] if p)
+    return letters.upper() or '?'
+
+
+@register.filter
+def basename(file_field):
+    """Имя файла без пути хранилища, для карточки вложения."""
+    if not file_field:
+        return ''
+    name = getattr(file_field, 'name', str(file_field))
+    return name.rsplit('/', 1)[-1]
