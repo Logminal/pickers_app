@@ -118,6 +118,15 @@ a:hover { color: var(--brand-dark); }
 }
 .app-navbar .nav-link.btn-link:hover { color: #fff !important; }
 
+/* Кнопка бургер-меню — под палец (мин. 44px, Apple/Google) */
+.navbar-toggler {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Карточки-контейнеры — сплошная белая поверхность, чёткая граница, мягкая тень */
 .card, .content-card, .table-responsive {
   background: var(--surface);

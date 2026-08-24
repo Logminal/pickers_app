@@ -5,7 +5,8 @@ from .models import WithdrawalRequest
 
 class WithdrawalRequestForm(forms.Form):
     method = forms.ChoiceField(
-        label='Как получить выплату', choices=WithdrawalRequest.Method.choices, widget=forms.RadioSelect,
+        label='Как получить выплату', choices=WithdrawalRequest.Method.choices,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
     )
     requisite = forms.CharField(
         label='Номер карты или телефона', required=False,
@@ -28,7 +29,7 @@ class WithdrawalRequestForm(forms.Form):
 class RatingForm(forms.Form):
     score = forms.ChoiceField(
         label='Оценка', choices=[(i, f'{i} ★') for i in range(5, 0, -1)],
-        widget=forms.RadioSelect,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
     )
     deadline_met = forms.BooleanField(label='Срок соблюдён', required=False, initial=True)
     had_complaint = forms.BooleanField(label='Была рекламация от клиента', required=False)

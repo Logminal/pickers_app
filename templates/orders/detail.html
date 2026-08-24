@@ -63,14 +63,14 @@
     {% if order.status == 'published' %}
         <form method="post" action="{% url 'order_book' order.pk %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-primary">Беру в работу</button>
+            <button type="submit" class="btn btn-primary w-100">Беру в работу</button>
         </form>
     {% elif order.collector == user %}
         {% if order.status == 'confirmed' or order.status == 'in_progress' or order.status == 'rejected_for_rework' %}
-            <a href="{% url 'report_upload' order.pk %}" class="btn btn-primary">Загрузить фотоотчёт</a>
+            <a href="{% url 'report_upload' order.pk %}" class="btn btn-primary w-100">Загрузить фотоотчёт</a>
         {% endif %}
         {% if order.status == 'closed' and order.act %}
-            <a href="{{ order.act.file.url }}" class="btn btn-outline-secondary">Скачать акт приёма-передачи</a>
+            <a href="{{ order.act.file.url }}" class="btn btn-outline-secondary w-100">Скачать акт приёма-передачи</a>
         {% endif %}
         {% if order.status == 'booked' or order.status == 'report_uploaded' or order.status == 'accepted' %}
             <p class="text-muted small mb-0">Ожидайте действий менеджера — текущий статус «{{ order.get_status_display }}».</p>

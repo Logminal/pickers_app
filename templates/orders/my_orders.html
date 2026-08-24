@@ -4,23 +4,22 @@
 {% block content %}
 <h1 class="h4 mb-4">Мои заявки</h1>
 {% if orders %}
-<div class="table-responsive">
-<table class="table table-hover mb-0">
-    <thead>
-        <tr><th>#</th><th>Тип</th><th>Статус</th><th>Срок сдачи</th><th>Сумма</th></tr>
-    </thead>
-    <tbody>
+<div class="row g-3">
     {% for order in orders %}
-        <tr>
-            <td><a href="{% url 'order_detail' order.pk %}">#{{ order.pk }}</a></td>
-            <td>{{ order.furniture_type }}</td>
-            <td><span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span></td>
-            <td>{{ order.deadline_at }}</td>
-            <td>{{ order.total_price }} ₽</td>
-        </tr>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h2 class="h6 card-title mb-0">Заявка #{{ order.pk }} — {{ order.furniture_type }}</h2>
+                    <span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span>
+                </div>
+                <p class="card-text mb-1 text-muted small">⏱ Срок сдачи: {{ order.deadline_at }}</p>
+                <p class="card-text mb-3 fw-bold">{{ order.total_price }} ₽</p>
+                <a href="{% url 'order_detail' order.pk %}" class="btn btn-primary w-100">Открыть заявку</a>
+            </div>
+        </div>
+    </div>
     {% endfor %}
-    </tbody>
-</table>
 </div>
 {% else %}
 <div class="empty-state">
