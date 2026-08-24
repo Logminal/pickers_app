@@ -121,6 +121,7 @@ def _send_max(log: NotificationLog):
             json={'text': log.message, 'attachments': []},
             headers={'Authorization': settings.MAX_BOT_TOKEN},
             timeout=10,
+            verify=settings.MAX_CA_BUNDLE,
         )
         response.raise_for_status()
         log.status = NotificationLog.Status.SENT

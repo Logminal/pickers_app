@@ -13,9 +13,9 @@ from .models import NotificationLog
 TELEGRAM_LINK_SALT = 'telegram-link'
 TELEGRAM_LINK_MAX_AGE = 3600  # ссылка одноразовая по смыслу, но на всякий случай живёт 1 час
 
-# MAX (пока) не подтверждённо поддерживает диплинки с payload (?start=...), поэтому
-# вместо кликабельной ссылки показываем пользователю команду для копирования —
-# он сам открывает бота в MAX и присылает её текстом. Код действует так же 1 час.
+# MAX поддерживает диплинки вида https://max.ru/<bot>?start=<payload> (до 128
+# символов в payload) — официально подтверждено в dev.max.ru/help/deeplinks.
+# Код действует так же 1 час, как и телеграмный.
 MAX_LINK_SALT = 'max-link'
 MAX_LINK_MAX_AGE = 3600
 
@@ -42,17 +42,17 @@ class NotificationSettingsView(LoginRequiredMixin, View):
             payload = signing.dumps(request.user.pk, salt=TELEGRAM_LINK_SALT)
             deep_link = f'https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={payload}'
 
-        max_link_command = None
-        if settings.MAX_BOT_TOKEN:
+        max_deep_link = None
+        if settings.MAX_BOT_USERNAME:
             payload = signing.dumps(request.user.pk, salt=MAX_LINK_SALT)
-            max_link_command = f'/start {payload}'
+            max_deep_link = f'https://max.ru/{settings.MAX_BOT_USERNAME}?start={payload}'
 
         recent = NotificationLog.objects.filter(user=request.user).order_by('-created_at')[:20]
         return {
             'deep_link': deep_link,
             'bot_username': settings.TELEGRAM_BOT_USERNAME,
             'telegram_connected': bool(request.user.telegram_chat_id),
-            'max_link_command': max_link_command,
+            'max_deep_link': max_deep_link,
             'max_bot_username': settings.MAX_BOT_USERNAME,
             'max_connected': bool(request.user.max_chat_id),
             'recent': recent,

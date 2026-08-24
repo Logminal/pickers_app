@@ -119,6 +119,15 @@ TELEGRAM_STAFF_GROUP_CHAT_ID = os.getenv('TELEGRAM_STAFF_GROUP_CHAT_ID', '')
 MAX_BOT_TOKEN = os.getenv('MAX_BOT_TOKEN', '')
 MAX_BOT_USERNAME = os.getenv('MAX_BOT_USERNAME', '')
 
+# Сертификат platform-api2.max.ru выпущен российским государственным УЦ
+# (Минцифры, "Russian Trusted CA") — его нет в стандартных доверенных
+# хранилищах вне РФ, поэтому обычная проверка SSL для этого домена падает
+# с "unable to get local issuer certificate". Официальная цепочка сохранена
+# в репозитории (certs/russian_trusted_ca_bundle.pem, источник — gu-st.ru)
+# и передаётся явно в requests(verify=...) — важно: НЕ отключать проверку
+# (verify=False) вместо этого, так теряется защита от подмены сертификата.
+MAX_CA_BUNDLE = str(BASE_DIR / 'certs' / 'russian_trusted_ca_bundle.pem')
+
 # Bitrix24 (п.8 ТЗ) — входящий вебхук, цена берётся из поля OPPORTUNITY сделки
 # (уточнено с заказчиком: цена хранится именно в сделке, не в товаре каталога).
 BITRIX_WEBHOOK_URL = os.getenv('BITRIX_WEBHOOK_URL', '')

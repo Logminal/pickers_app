@@ -8,3 +8,4 @@ private_storage/
 staticfiles/
 .idea/
 .telegram_offset
+.max_marker

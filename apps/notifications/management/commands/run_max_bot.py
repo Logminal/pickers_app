@@ -3,10 +3,12 @@ Long-polling MAX-бот для привязки аккаунтов (п.6 ТЗ) �
 в дополнение к Telegram, пользователь сам выбирает канал(ы) в личном кабинете.
 
 MAX Bot API устроен похоже на Telegram (токен в заголовке Authorization,
-получение обновлений через GET /updates), но диплинки с payload (аналог
-Telegram ?start=xxx) на момент разработки не подтверждены документацией —
-поэтому вместо кликабельной ссылки пользователь копирует команду вида
-"/start <подписанный_id>" со страницы «Уведомления» и присылает её боту сам.
+получение обновлений через GET /updates). Диплинк вида
+https://max.ru/<bot>?start=<payload> подтверждён официальной документацией
+(dev.max.ru/help/deeplinks) — payload приходит в событии bot_started.
+На случай если payload почему-то не дойдёт (например, пользователь открыл
+бота не по ссылке) — как страховка, также понимаем ту же команду
+"/start <payload>", присланную текстом вручную.
 
 Запуск (должен работать постоянно, как отдельный процесс, аналогично
 run_telegram_bot):
@@ -68,6 +70,7 @@ class Command(BaseCommand):
         resp = requests.get(
             f'{API_BASE}/updates', params=params,
             headers={'Authorization': settings.MAX_BOT_TOKEN}, timeout=40,
+            verify=settings.MAX_CA_BUNDLE,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -86,11 +89,16 @@ class Command(BaseCommand):
             self._handle_text(chat_id, chat_type, text)
         elif update_type == 'bot_started':
             chat_id = update.get('chat_id')
-            if chat_id is not None:
+            if chat_id is None:
+                return
+            payload = update.get('payload')
+            if payload:
+                self._link_account(chat_id, payload)
+            else:
                 self._send(
                     chat_id,
-                    'Привет! Чтобы подключить уведомления, скопируйте команду со страницы '
-                    '«Уведомления» в личном кабинете на сайте и пришлите её сюда сообщением.',
+                    'Привет! Чтобы подключить уведомления, откройте ссылку в личном кабинете на сайте '
+                    '(раздел «Уведомления») — она приведёт сюда с готовой привязкой.',
                 )
 
     def _handle_text(self, chat_id, chat_type, text):
@@ -138,6 +146,7 @@ class Command(BaseCommand):
                 f'{API_BASE}/messages', params={'chat_id': chat_id},
                 json={'text': text, 'attachments': []},
                 headers={'Authorization': settings.MAX_BOT_TOKEN}, timeout=10,
+                verify=settings.MAX_CA_BUNDLE,
             )
         except requests.RequestException:
             pass

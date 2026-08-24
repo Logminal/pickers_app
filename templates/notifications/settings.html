@@ -47,16 +47,11 @@
         <p class="text-muted small mt-2 mb-0">Уведомления от платформы приходят вам в MAX.</p>
     {% else %}
         <p class="text-muted small mb-3">
-            Чтобы подключить MAX: откройте приложение MAX, найдите бота
-            {% if max_bot_username %}<strong>{{ max_bot_username }}</strong>{% else %}«Монтажники»{% endif %},
-            начните с ним диалог и отправьте сообщением команду ниже (скопируйте целиком).
+            Подключите MAX, чтобы получать уведомления там же, где Telegram, или вместо него.
         </p>
-        {% if max_link_command %}
-            <div class="input-group mb-2" style="max-width: 480px;">
-                <input type="text" class="form-control" readonly value="{{ max_link_command }}" id="max-link-command">
-                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('max-link-command').value)">Скопировать</button>
-            </div>
-            <p class="text-muted small mb-0">Код действует 1 час — если не успели, обновите эту страницу для нового.</p>
+        {% if max_deep_link %}
+            <a href="{{ max_deep_link }}" target="_blank" class="btn btn-primary">Подключить в MAX</a>
+            <p class="text-muted small mt-2 mb-0">Откроется бот <strong>«Монтажники»</strong> — нажмите «Запустить».</p>
         {% else %}
             <p class="text-danger small mb-0">Бот пока не настроен администратором.</p>
         {% endif %}

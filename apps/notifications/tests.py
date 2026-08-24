@@ -154,29 +154,29 @@ class MaxLinkSettingsTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='u3', password='x', role=User.Role.COLLECTOR)
 
-    def test_link_command_generated_when_bot_configured(self):
+    def test_deep_link_generated_when_bot_configured(self):
         client = Client()
         client.force_login(self.user)
         response = client.get(reverse('notification_settings'))
 
-        self.assertIsNotNone(response.context['max_link_command'])
-        self.assertTrue(response.context['max_link_command'].startswith('/start '))
+        self.assertIsNotNone(response.context['max_deep_link'])
+        self.assertIn('https://max.ru/test_max_bot?start=', response.context['max_deep_link'])
 
-    def test_link_command_payload_resolves_back_to_user(self):
+    def test_deep_link_payload_resolves_back_to_user(self):
         client = Client()
         client.force_login(self.user)
         response = client.get(reverse('notification_settings'))
 
-        payload = response.context['max_link_command'].split('/start ')[1]
+        payload = response.context['max_deep_link'].split('?start=')[1]
         resolved_user_id = signing.loads(payload, salt=MAX_LINK_SALT, max_age=MAX_LINK_MAX_AGE)
         self.assertEqual(resolved_user_id, self.user.pk)
 
-    @override_settings(MAX_BOT_TOKEN='')
-    def test_no_link_command_when_bot_not_configured(self):
+    @override_settings(MAX_BOT_USERNAME='')
+    def test_no_deep_link_when_bot_not_configured(self):
         client = Client()
         client.force_login(self.user)
         response = client.get(reverse('notification_settings'))
-        self.assertIsNone(response.context['max_link_command'])
+        self.assertIsNone(response.context['max_deep_link'])
 
     def test_shows_not_connected_when_no_max_chat_id(self):
         client = Client()
