@@ -51,7 +51,7 @@ class PhotoReportUploadView(LoginRequiredMixin, View):
         slots = self._get_slots(order)
         form = SlotPhotoForm(slots=slots)
         return render(request, self.template_name, {
-            'order': order, 'form': form, 'checklist': DEFAULT_CHECKLIST,
+            'order': order, 'form': form, 'slots': slots, 'checklist': DEFAULT_CHECKLIST,
             'additional_work_rows': range(1, ADDITIONAL_WORK_ROWS + 1),
         })
 
@@ -62,7 +62,7 @@ class PhotoReportUploadView(LoginRequiredMixin, View):
 
         if not form.is_valid():
             return render(request, self.template_name, {
-                'order': order, 'form': form, 'checklist': DEFAULT_CHECKLIST,
+                'order': order, 'form': form, 'slots': slots, 'checklist': DEFAULT_CHECKLIST,
                 'additional_work_rows': range(1, ADDITIONAL_WORK_ROWS + 1),
             })
 
@@ -77,9 +77,9 @@ class PhotoReportUploadView(LoginRequiredMixin, View):
         submit_photo_report(
             order=order, collector=request.user, slot_files=slot_files,
             checked_items=checked_items, comment=request.POST.get('comment', ''),
-            additional_works=additional_works,
+            additional_works=additional_works, act_photo=form.cleaned_data['act_photo'],
         )
-        messages.success(request, 'Фотоотчёт отправлен менеджеру на проверку.')
+        messages.success(request, 'Фотоотчёт и акт приёма-передачи отправлены менеджеру на проверку.')
         return redirect('order_detail', pk=order.pk)
 
 
@@ -109,18 +109,22 @@ class ActUploadView(ManagerRequiredMixin, View):
         order = get_object_or_404(Order, pk=pk)
         form = ActUploadForm(request.POST, request.FILES)
         if not form.is_valid():
-            messages.error(request, 'Прикрепите файл акта и подтвердите его читаемость.')
+            messages.error(request, 'Проверьте форму акта.')
             return redirect('report_review', pk=pk)
 
-        Act.objects.update_or_create(
-            order=order,
-            defaults={
-                'file': form.cleaned_data['act_file'],
-                'uploaded_by': request.user,
-                'is_readable_confirmed': form.cleaned_data['is_readable_confirmed'],
-            },
-        )
-        messages.success(request, 'Акт прикреплён. Теперь можно закрыть заявку.')
+        act_file = form.cleaned_data['act_file']
+        if not act_file and not hasattr(order, 'act'):
+            messages.error(request, 'Прикрепите файл акта — сборщик его пока не загрузил.')
+            return redirect('report_review', pk=pk)
+
+        defaults = {
+            'uploaded_by': request.user,
+            'is_readable_confirmed': form.cleaned_data['is_readable_confirmed'],
+        }
+        if act_file:
+            defaults['file'] = act_file
+        Act.objects.update_or_create(order=order, defaults=defaults)
+        messages.success(request, 'Акт подтверждён. Теперь можно закрыть заявку.')
         return redirect('report_review', pk=pk)
 
 

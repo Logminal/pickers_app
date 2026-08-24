@@ -148,3 +148,126 @@ class PhotoReportAndActTests(TestCase):
         AdditionalWork.objects.create(order=self.order, description='Ещё работа', price=Decimal('300'))
         record.refresh_from_db()
         self.assertEqual(record.amount, Decimal('11200'))
+
+
+class CollectorAttachesActTests(TestCase):
+    """Акт приёма-передачи (п.4 ТЗ) теперь прикрепляет сам сборщик — фото
+    подписанного бланка со сдачи заявки, а не отдельный шаг менеджера."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager2', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector2', password='x', role=User.Role.COLLECTOR)
+        CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+        self.template = PhotoSlotTemplate.objects.create(name='Кухня — тест 2')
+        self.slot = PhotoSlotDefinition.objects.create(
+            template=self.template, title='Общий вид', is_required=True, order=0,
+        )
+        self.ft = FurnitureType.objects.create(name='Кухня', photo_slots_template=self.template)
+        self.order = Order.objects.create(
+            furniture_type=self.ft, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=Decimal('10000'),
+            status=Order.Status.PUBLISHED, created_by=self.manager,
+        )
+        book_order(self.order.pk, self.collector)
+        confirm_booking(self.order.pk, self.manager)
+        self.order.refresh_from_db()
+
+    def _submit_with_act(self):
+        photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        act_photo = SimpleUploadedFile('act.jpg', b'fake-act-bytes', content_type='image/jpeg')
+        submit_photo_report(
+            order=self.order, collector=self.collector,
+            slot_files={self.slot.id: photo}, checked_items=[], comment='Готово',
+            act_photo=act_photo,
+        )
+
+    def test_act_created_from_collector_submission(self):
+        self._submit_with_act()
+        act = Act.objects.get(order=self.order)
+        self.assertEqual(act.uploaded_by, self.collector)
+        self.assertFalse(act.is_readable_confirmed)
+
+    def test_manager_can_confirm_readability_without_reuploading(self):
+        self._submit_with_act()
+        act = Act.objects.get(order=self.order)
+        original_file_name = act.file.name
+
+        client = self.client
+        client.force_login(self.manager)
+        response = client.post(f'/manager/orders/{self.order.pk}/act/upload/', {'is_readable_confirmed': 'on'})
+
+        act.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(act.is_readable_confirmed)
+        self.assertEqual(act.file.name, original_file_name)
+        self.assertEqual(act.uploaded_by, self.manager)
+
+    def test_manager_cannot_confirm_without_any_act_or_file(self):
+        client = self.client
+        client.force_login(self.manager)
+        response = client.post(f'/manager/orders/{self.order.pk}/act/upload/', {'is_readable_confirmed': 'on'})
+
+        self.assertFalse(hasattr(self.order, 'act'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_resubmission_resets_readability_confirmation(self):
+        self._submit_with_act()
+        act = Act.objects.get(order=self.order)
+        act.is_readable_confirmed = True
+        act.save()
+
+        self._submit_with_act()
+        act.refresh_from_db()
+        self.assertFalse(act.is_readable_confirmed)
+
+    def test_collector_view_submission_creates_act(self):
+        """Полный путь через реальную view (не напрямую через сервис) — форма
+        должна требовать act_photo и после отправки создавать Act."""
+        # ImageField валидирует содержимое через Pillow — нужен настоящий, пусть
+        # и крошечный, PNG, а не произвольные байты.
+        import io
+        from PIL import Image
+
+        def _fake_image(name):
+            buf = io.BytesIO()
+            Image.new('RGB', (1, 1)).save(buf, format='PNG')
+            buf.seek(0)
+            return SimpleUploadedFile(name, buf.read(), content_type='image/png')
+
+        client = self.client
+        client.force_login(self.collector)
+
+        response = client.post(f'/orders/{self.order.pk}/report/upload/', {
+            f'slot_{self.slot.id}': _fake_image('slot.png'),
+            'checklist': [],
+            'comment': 'Готово',
+        })
+        # Без act_photo форма должна остаться на странице (невалидна), не редиректить.
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Act.objects.filter(order=self.order).exists())
+
+        response = client.post(f'/orders/{self.order.pk}/report/upload/', {
+            f'slot_{self.slot.id}': _fake_image('slot.png'),
+            'act_photo': _fake_image('act.png'),
+            'checklist': [],
+            'comment': 'Готово',
+        })
+        self.assertEqual(response.status_code, 302)
+        act = Act.objects.get(order=self.order)
+        self.assertEqual(act.uploaded_by, self.collector)
+        self.assertFalse(act.is_readable_confirmed)
+
+    def test_close_order_blocked_without_act_photo_from_collector(self):
+        photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        submit_photo_report(
+            order=self.order, collector=self.collector,
+            slot_files={self.slot.id: photo}, checked_items=[], comment='Готово',
+        )
+        review_photo_report(self.order, self.manager, accepted=True)
+        self.order.refresh_from_db()
+
+        with self.assertRaises(ValueError):
+            close_order(self.order, self.manager)

@@ -21,6 +21,15 @@ class PhotoReportCommentForm(forms.ModelForm):
 class SlotPhotoForm(forms.Form):
     """Одно поле загрузки на слот — рендерится динамически в шаблоне по списку слотов."""
 
+    # Акт приёма-передачи (п.4 ТЗ) теперь прикрепляет сам сборщик — фото
+    # подписанного бланка с объекта, а не отдельный шаг менеджера. Менеджер
+    # по-прежнему подтверждает читаемость (или прикладывает свой файл, если
+    # снимок не годится) на странице проверки отчёта.
+    act_photo = forms.ImageField(
+        label='Акт приёма-передачи (фото подписанного бланка)',
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+    )
+
     def __init__(self, slots, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for slot in slots:
@@ -28,6 +37,9 @@ class SlotPhotoForm(forms.Form):
                 label=slot.title, required=slot.is_required,
                 widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
             )
+        # act_photo должно быть в форме последним полем визуально — раз добавлено
+        # в Meta класса раньше динамических слотов, переносим порядок явно.
+        self.order_fields(list(self.fields.keys())[1:] + ['act_photo'])
 
 
 # Доп. работы, обнаруженные на объекте сверх заявки (по образцу «Руки») —
@@ -36,7 +48,13 @@ ADDITIONAL_WORK_ROWS = 3
 
 
 class ActUploadForm(forms.Form):
-    act_file = forms.FileField(label='Файл акта', widget=forms.ClearableFileInput(attrs={'class': 'form-control'}))
+    # Необязательно: обычно акт уже прикреплён сборщиком при сдаче фотоотчёта
+    # (см. SlotPhotoForm.act_photo) — менеджеру нужно только подтвердить
+    # читаемость. Файл можно заменить здесь же, если снимок сборщика не годится.
+    act_file = forms.FileField(
+        label='Файл акта (оставьте пустым, чтобы не менять уже прикреплённый)',
+        required=False, widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+    )
     is_readable_confirmed = forms.BooleanField(
         label='Подтверждаю: акт заполнен по бланку, все поля разборчивы',
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),

@@ -63,12 +63,20 @@
         <p><a href="{{ order.furniture_type.act_template_file.url }}" target="_blank">Скачать пустой бланк акта для «{{ order.furniture_type }}»</a></p>
     {% endif %}
     {% if order.act %}
-        <p>
-            <a href="{{ order.act.file.url }}">Скачать прикреплённый акт</a>
-            {% if not order.act.is_readable_confirmed %}
-                <span class="status-pill status-warning">Читаемость не подтверждена</span>
-            {% endif %}
-        </p>
+        <div class="mb-2">
+            <img src="{{ order.act.file.url }}" alt="Акт приёма-передачи" class="img-fluid rounded mb-1" style="max-height: 320px; border: 1px solid var(--border);">
+            <p class="small text-muted mb-1">
+                Прикрепил: {{ order.act.uploaded_by|default:'—' }}
+                {% if not order.act.is_readable_confirmed %}
+                    <span class="status-pill status-warning">Читаемость не подтверждена</span>
+                {% else %}
+                    <span class="status-pill status-success">Читаемость подтверждена</span>
+                {% endif %}
+            </p>
+            <a href="{{ order.act.file.url }}" target="_blank" class="small">Открыть в полном размере</a>
+        </div>
+    {% else %}
+        <p class="text-muted small">Сборщик ещё не прикрепил акт.</p>
     {% endif %}
     {% if not order.act or not order.act.is_readable_confirmed %}
         <form method="post" action="{% url 'act_upload' order.pk %}" enctype="multipart/form-data" class="mb-0">
@@ -83,7 +91,7 @@
                     {{ act_form.is_readable_confirmed.label }}
                 </label>
             </div>
-            <button type="submit" class="btn btn-secondary btn-sm">Прикрепить акт</button>
+            <button type="submit" class="btn btn-secondary btn-sm">{% if order.act %}Подтвердить акт{% else %}Прикрепить акт{% endif %}</button>
         </form>
     {% endif %}
 

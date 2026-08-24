@@ -7,7 +7,7 @@
 <div id="offline-banner" class="alert alert-info d-none"></div>
 <p class="text-muted small">📶 Плохая связь на объекте? Заполните форму как обычно — если отправить не получится, отчёт сохранится на телефоне и уйдёт сам, когда связь появится.</p>
 
-{% if not form.fields %}
+{% if not slots %}
     <div class="alert alert-warning">
         Для этого типа мебели не настроен шаблон слотов фото. Обратитесь к администратору.
     </div>
@@ -18,6 +18,7 @@
     <div class="content-card">
         <h2 class="h6 mb-3">📷 Фото по слотам</h2>
         {% for field in form %}
+            {% if field.name != 'act_photo' %}
             <div class="mb-3">
                 <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
                 {{ field }}
@@ -25,7 +26,20 @@
                     <div class="text-danger small">{{ error }}</div>
                 {% endfor %}
             </div>
+            {% endif %}
         {% endfor %}
+    </div>
+
+    <div class="content-card">
+        <h2 class="h6 mb-3">📝 Акт приёма-передачи</h2>
+        <p class="text-muted small mb-3">Подпишите бланк акта у клиента на месте и сфотографируйте его — менеджер проверит читаемость перед закрытием заявки.</p>
+        <div class="mb-1">
+            <label class="form-label" for="{{ form.act_photo.id_for_label }}">{{ form.act_photo.label }} <span class="text-danger">*</span></label>
+            {{ form.act_photo }}
+            {% for error in form.act_photo.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
     </div>
 
     <div class="content-card">

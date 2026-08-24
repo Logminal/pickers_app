@@ -5,16 +5,18 @@ from apps.notifications.services import notify
 from apps.orders.models import Order, OrderStatusHistory
 
 from .forms import DEFAULT_CHECKLIST
-from .models import AdditionalWork, ChecklistItem, Photo, PhotoReport
+from .models import Act, AdditionalWork, ChecklistItem, Photo, PhotoReport
 
 
 @transaction.atomic
 def submit_photo_report(
     order: Order, collector, slot_files: dict, checked_items: list, comment: str,
-    additional_works: list | None = None,
+    additional_works: list | None = None, act_photo=None,
 ):
     """slot_files: {slot_id: UploadedFile}, checked_items: список отмеченных пунктов чек-листа.
     additional_works: [{'description': str, 'price': Decimal}, ...] — доп. работы сверх заявки.
+    act_photo: фото подписанного акта приёма-передачи со стороны сборщика (п.4 ТЗ) —
+    менеджер отдельно подтверждает его читаемость перед закрытием заявки.
     """
 
     report, _ = PhotoReport.objects.get_or_create(order=order)
@@ -35,6 +37,14 @@ def submit_photo_report(
     for work in (additional_works or []):
         AdditionalWork.objects.create(
             order=order, description=work['description'], price=work['price'], added_by=collector,
+        )
+
+    if act_photo is not None:
+        # Новое фото — значит, читаемость нужно подтверждать заново, даже если
+        # это доработка после отклонения и акт уже был подтверждён раньше.
+        Act.objects.update_or_create(
+            order=order,
+            defaults={'file': act_photo, 'uploaded_by': collector, 'is_readable_confirmed': False},
         )
 
     from_status = order.status
