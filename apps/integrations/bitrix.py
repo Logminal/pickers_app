@@ -6,7 +6,7 @@
   UF_CRM_1782216015647 — «Процент цех» (Процент сборки, %)
   UF_CRM_1612863263941 — «Монтаж»
   UF_CRM_1782220049586 — «Доп. стоимость» (Доп. услуги)
-  UF_CRM_5D56732C52940 — «Подъем»
+  UF_CRM_1557304350 — «Сумма подъёма»
   UF_CRM_1553148181482 — «Доставка»
 
 Итого = сумма всех компонентов (считаем сами, складывая всё).
@@ -24,7 +24,7 @@ BREAKDOWN_FIELD_CODES = {
     'assembly_percent': 'UF_CRM_1782216015647',
     'installation_amount': 'UF_CRM_1612863263941',
     'additional_services_amount': 'UF_CRM_1782220049586',
-    'lift_amount': 'UF_CRM_5D56732C52940',
+    'lift_amount': 'UF_CRM_1557304350',
     'delivery_amount': 'UF_CRM_1553148181482',
 }
 

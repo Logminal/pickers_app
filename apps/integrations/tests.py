@@ -17,7 +17,7 @@ def _deal_response(**overrides):
         'UF_CRM_1782216015647': '15',
         'UF_CRM_1612863263941': '5000|RUB',
         'UF_CRM_1782220049586': '2000|RUB',
-        'UF_CRM_5D56732C52940': '1000|RUB',
+        'UF_CRM_1557304350': '1000|RUB',
         'UF_CRM_1553148181482': '2500|RUB',
     }
     data.update(overrides)
@@ -79,7 +79,7 @@ class BitrixClientTests(TestCase):
     @patch('apps.integrations.bitrix.requests.get')
     def test_breakdown_missing_installation_and_lift_defaults_to_zero(self, mock_get):
         mock_get.return_value = _deal_response(
-            **{'UF_CRM_1612863263941': '', 'UF_CRM_5D56732C52940': ''}
+            **{'UF_CRM_1612863263941': '', 'UF_CRM_1557304350': ''}
         )
 
         result = get_deal_breakdown('5')
