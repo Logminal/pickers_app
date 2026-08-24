@@ -656,6 +656,191 @@ a.job-card:hover { background: var(--brand-light); }
 .note-text { margin: 0; font-weight: 500; font-size: 0.82rem; line-height: 1.5; color: #4a4340; }
 .note-meta { margin-top: 0.5rem; font-weight: 600; font-size: 0.68rem; color: var(--ink-faint); }
 
+/* ============================================================
+   Загрузка фотоотчёта — по макету Claude Design
+   ============================================================ */
+
+.upload-progress-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.7rem; }
+.upload-progress-track { flex: 1; height: 7px; border-radius: 5px; background: #eae5e2; overflow: hidden; }
+.upload-progress-fill { height: 100%; width: 0; border-radius: 5px; background: var(--brand); transition: width 0.25s ease, background 0.25s ease; }
+.upload-progress-label { flex: none; font-weight: 800; font-size: 0.72rem; color: var(--brand); transition: color 0.25s ease; }
+
+.offline-notice {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.8rem 0.85rem;
+  border-radius: 14px;
+  background: #fefaf1;
+  border: 1px solid rgba(138,91,18,0.2);
+  margin-bottom: 1rem;
+}
+.offline-notice-icon { flex: none; font-size: 0.95rem; }
+.offline-notice-title { font-weight: 700; font-size: 0.78rem; color: var(--warning); }
+.offline-notice-text { margin-top: 0.25rem; font-weight: 500; font-size: 0.72rem; line-height: 1.5; color: var(--warning); }
+
+/* Реальный <input type="file"> остаётся в DOM и рабочим (доступность, submit),
+   просто визуально скрыт — открывается через <label for="..."> вокруг него. */
+.photo-slot input[type="file"], .act-card-done ~ input[type="file"], #act-card input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.photo-slot-list { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.photo-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.65rem;
+  border-radius: 12px;
+  background: #faf8f7;
+  border: 1px solid rgba(29,22,20,0.08);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.photo-slot[data-slot-required="1"] { border-color: rgba(168,23,47,0.16); }
+.photo-slot-done { background: #f7faf8; border-color: rgba(47,125,90,0.22) !important; }
+.photo-slot-thumb {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: var(--neutral-bg);
+  border: 1.5px dashed rgba(29,22,20,0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0;
+}
+.photo-slot-done .photo-slot-thumb { background: repeating-linear-gradient(45deg,#e4efe9,#e4efe9 7px,#d7e7df 7px,#d7e7df 14px); border: 1px solid rgba(47,125,90,0.2); }
+.photo-slot-thumb-icon { font-weight: 700; font-size: 1.1rem; color: var(--ink-faint); }
+.photo-slot-done .photo-slot-thumb-icon { color: var(--success); }
+.photo-slot-body { flex: 1; min-width: 0; }
+.photo-slot-label { font-weight: 700; font-size: 0.85rem; color: var(--ink); }
+.photo-slot-star { color: var(--danger); }
+.photo-slot-hint { margin-top: 0.2rem; font-weight: 600; font-size: 0.7rem; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-slot-done .photo-slot-hint { color: var(--success); }
+.photo-slot-btn {
+  flex: none;
+  cursor: pointer;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  margin: 0;
+}
+.photo-slot-done .photo-slot-btn { background: #fff; color: #4a4340; border: 1.5px solid rgba(29,22,20,0.14); }
+.photo-slot-error { margin-top: 0.3rem; }
+
+#act-card { position: relative; transition: border-color 0.15s ease; }
+#act-card.act-card-done { border-color: rgba(47,125,90,0.22); }
+.act-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  cursor: pointer;
+  padding: 0.85rem;
+  border-radius: 13px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.act-card-done .act-upload-btn { background: #f7faf8; color: var(--success); border: 1.5px solid rgba(47,125,90,0.25); }
+
+.checklist-list { margin-top: 0.6rem; display: flex; flex-direction: column; }
+.checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.checklist-row:last-child { border-bottom: none; }
+/* Чекбокс сам себе визуальный бокс (appearance:none + ::after-галочка) —
+   не прячем реальный инпут отдельным элементом и не полагаемся на sibling-
+   селектор: так надёжнее кросс-браузерно, чем 1px-скрытый инпут + соседний span. */
+.checklist-input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 7px;
+  background: #fff;
+  border: 1.5px solid rgba(29,22,20,0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.checklist-input::after { content: ''; color: #fff; font-weight: 800; font-size: 0.78rem; }
+.checklist-input:checked { background: var(--success); border-color: var(--success); }
+.checklist-input:checked::after { content: '✓'; }
+.checklist-input:focus-visible { box-shadow: 0 0 0 3px rgba(3,105,161,0.2); outline: none; }
+.checklist-text { flex: 1; font-weight: 600; font-size: 0.83rem; color: var(--ink); line-height: 1.4; }
+
+.extras-list { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.extras-row { display: flex; gap: 0.5rem; align-items: center; }
+.extras-desc {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  background: #faf8f7;
+  padding: 0.65rem;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+.extras-price-wrap {
+  flex: none;
+  width: 100px;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  background: #faf8f7;
+  padding: 0 0.6rem;
+}
+.extras-price { flex: 1; min-width: 0; border: none; outline: none; background: transparent; padding: 0.65rem 0; font-weight: 700; font-size: 0.78rem; color: var(--ink); }
+.extras-currency { font-weight: 700; font-size: 0.78rem; color: var(--ink-faint); }
+.extras-total {
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  background: var(--brand-light);
+  border: 1px solid rgba(138,53,39,0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.extras-total span:first-child { font-weight: 700; font-size: 0.78rem; color: var(--brand-dark); }
+.extras-total span:last-child { font-weight: 800; font-size: 1rem; color: var(--brand); }
+
+.upload-submit-bar { margin: 0.25rem 0 1.5rem; }
+.upload-blocked-hint { margin-bottom: 0.55rem; font-weight: 700; font-size: 0.72rem; color: var(--danger); text-align: center; }
+.btn-action-submit { background: #c3bab6; color: #fff; }
+.btn-action-submit-ready { background: var(--success); box-shadow: 0 8px 20px -10px rgba(37,107,76,0.85); }
+.btn-action-submit-ready:hover { background: #1e5940; }
+
 /* Формы */
 .form-label { font-weight: 700; font-size: 0.85rem; color: var(--ink); margin-bottom: 0.35rem; }
 .form-control, .form-select,

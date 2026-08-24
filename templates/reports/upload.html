@@ -2,78 +2,114 @@
 {% load static %}
 {% block title %}Фотоотчёт по заявке #{{ order.pk }}{% endblock %}
 {% block content %}
-<h1 class="h4 mb-4">Фотоотчёт по заявке #{{ order.pk }}</h1>
+<div class="order-sticky-header">
+    <a href="{% url 'order_detail' order.pk %}" class="order-back-link">&larr; Заявка #{{ order.pk }}</a>
+    <div class="order-header-title">Фотоотчёт по заявке #{{ order.pk }}</div>
+    <div class="order-header-subtitle">{{ order.furniture_type }}</div>
+    <div class="upload-progress-row">
+        <div class="upload-progress-track"><div class="upload-progress-fill" id="upload-progress-fill"></div></div>
+        <span class="upload-progress-label" id="upload-progress-label">0%</span>
+    </div>
+</div>
 
 <div id="offline-banner" class="alert alert-info d-none"></div>
-<p class="text-muted small">📶 Плохая связь на объекте? Заполните форму как обычно — если отправить не получится, отчёт сохранится на телефоне и уйдёт сам, когда связь появится.</p>
+<div class="offline-notice">
+    <span class="offline-notice-icon">📡</span>
+    <div>
+        <div class="offline-notice-title">Связь на объекте бывает слабой</div>
+        <div class="offline-notice-text">Черновик сохраняется на телефоне автоматически. Можно заполнять без сети — отчёт уйдёт сам, как только появится интернет.</div>
+    </div>
+</div>
 
 {% if not slots %}
     <div class="alert alert-warning">
         Для этого типа мебели не настроен шаблон слотов фото. Обратитесь к администратору.
     </div>
 {% else %}
-<form method="post" enctype="multipart/form-data" data-offline-report-form data-order-id="{{ order.pk }}">
+<form method="post" enctype="multipart/form-data" data-offline-report-form data-order-id="{{ order.pk }}" id="report-upload-form">
     {% csrf_token %}
 
     <div class="content-card">
-        <h2 class="h6 mb-3">📷 Фото по слотам</h2>
-        {% for field in form %}
-            {% if field.name != 'act_photo' %}
-            <div class="mb-3">
-                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                {{ field }}
-                {% for error in field.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-            </div>
-            {% endif %}
+        <div class="section-title-row">
+            <span class="section-title">📷 Фото по слотам</span>
+            <span class="log-count" id="slot-count-label"></span>
+        </div>
+        <div class="photo-slot-list">
+            {% for field in form %}
+                {% if field.name != 'act_photo' %}
+                <div class="photo-slot" data-slot-required="{% if field.field.required %}1{% else %}0{% endif %}">
+                    <label for="{{ field.id_for_label }}" class="photo-slot-thumb"><span class="photo-slot-thumb-icon">＋</span></label>
+                    <div class="photo-slot-body">
+                        <div class="photo-slot-label">{{ field.label }}{% if field.field.required %}<span class="photo-slot-star"> *</span>{% endif %}</div>
+                        <div class="photo-slot-hint">Нажмите, чтобы прикрепить фото</div>
+                    </div>
+                    <label for="{{ field.id_for_label }}" class="photo-slot-btn">Загрузить</label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <div class="text-danger small photo-slot-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="content-card" id="act-card">
+        <div class="section-title">📝 Акт приёма-передачи<span class="photo-slot-star"> *</span></div>
+        <p class="text-muted small mb-0 mt-1">Распечатанный бланк подпишите у клиента и сфотографируйте целиком — подпись и дата должны быть читаемы.</p>
+        <label for="{{ form.act_photo.id_for_label }}" class="act-upload-btn" id="act-upload-btn">📎 Загрузить фото акта</label>
+        {{ form.act_photo }}
+        {% for error in form.act_photo.errors %}
+            <div class="text-danger small photo-slot-error">{{ error }}</div>
         {% endfor %}
     </div>
 
     <div class="content-card">
-        <h2 class="h6 mb-3">📝 Акт приёма-передачи</h2>
-        <p class="text-muted small mb-3">Подпишите бланк акта у клиента на месте и сфотографируйте его — менеджер проверит читаемость перед закрытием заявки.</p>
-        <div class="mb-1">
-            <label class="form-label" for="{{ form.act_photo.id_for_label }}">{{ form.act_photo.label }} <span class="text-danger">*</span></label>
-            {{ form.act_photo }}
-            {% for error in form.act_photo.errors %}
-                <div class="text-danger small">{{ error }}</div>
+        <div class="section-title-row">
+            <span class="section-title">✅ Чек-лист перед сдачей</span>
+            <span class="log-count" id="checklist-count-label"></span>
+        </div>
+        <div class="checklist-list">
+            {% for item in checklist %}
+                <label class="checklist-row" for="chk_{{ forloop.counter }}">
+                    <input class="checklist-input" type="checkbox" name="checklist" value="{{ item }}" id="chk_{{ forloop.counter }}" required>
+                    <span class="checklist-text">{{ item }}</span>
+                </label>
             {% endfor %}
         </div>
     </div>
 
     <div class="content-card">
-        <h2 class="h6 mb-3">✅ Чек-лист перед сдачей</h2>
-        {% for item in checklist %}
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" name="checklist" value="{{ item }}" id="chk_{{ forloop.counter }}" required>
-                <label class="form-check-label" for="chk_{{ forloop.counter }}">{{ item }}</label>
-            </div>
-        {% endfor %}
+        <div class="section-title">➕ Дополнительные работы</div>
+        <p class="text-muted small mb-0 mt-1">Только то, чего не было в заявке. До 3 позиций — менеджер подтвердит суммы при проверке.</p>
+        <div class="extras-list">
+            {% for i in additional_work_rows %}
+                <div class="extras-row">
+                    <input type="text" class="extras-desc" name="extra_work_desc_{{ i }}" placeholder="{% if i == 1 %}Описание работы{% else %}Ещё позиция (необязательно){% endif %}">
+                    <div class="extras-price-wrap">
+                        <input type="text" inputmode="numeric" class="extras-price" name="extra_work_price_{{ i }}" placeholder="0">
+                        <span class="extras-currency">₽</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="extras-total" id="extras-total" hidden>
+            <span>Доп. работы к согласованию</span>
+            <span id="extras-total-value">0 ₽</span>
+        </div>
     </div>
 
     <div class="content-card">
-        <h2 class="h6 mb-1">➕ Дополнительные работы сверх заявки</h2>
-        <p class="text-muted small mb-3">Если на объекте потребовалось сделать что-то, чего не было в исходной заявке — укажите здесь, чтобы менеджер учёл это при закрытии.</p>
-        {% for i in additional_work_rows %}
-            <div class="row g-2 mb-2">
-                <div class="col-8">
-                    <input type="text" class="form-control form-control-sm" name="extra_work_desc_{{ i }}" placeholder="Описание работы">
-                </div>
-                <div class="col-4">
-                    <input type="text" class="form-control form-control-sm" name="extra_work_price_{{ i }}" placeholder="Стоимость, ₽">
-                </div>
-            </div>
-        {% endfor %}
+        <div class="section-title">Комментарий</div>
+        <textarea class="form-control mt-2" name="comment" id="comment" rows="3" placeholder="Что стоит знать менеджеру: замечания клиента, нестандартные решения, недостающие детали…"></textarea>
     </div>
 
-    <div class="content-card">
-        <label class="form-label" for="comment">Комментарий (что сделано, есть ли нюансы)</label>
-        <textarea class="form-control" name="comment" id="comment" rows="3"></textarea>
+    <div class="upload-submit-bar">
+        <div class="upload-blocked-hint" id="upload-blocked-hint"></div>
+        <button type="submit" class="btn-action btn-action-submit" id="upload-submit-btn">Отправить на проверку</button>
     </div>
-
-    <button type="submit" class="btn btn-primary w-100">Отправить на проверку</button>
 </form>
 <script src="{% static 'js/offline-report.js' %}"></script>
+<script src="{% static 'js/report-upload-ui.js' %}"></script>
 {% endif %}
 {% endblock %}
