@@ -39,6 +39,11 @@
 
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
+/* Bootstrap 5.3 включает scroll-behavior: smooth через селектор :root —
+   он специфичнее голого "html" (класс-уровня против тега), поэтому "html {}"
+   не побеждал. На длинных страницах (карточка заявки и т.п.) плавный скролл
+   ощущается как "залипание"/задержка — возвращаем обычный мгновенный скролл. */
+:root, html { scroll-behavior: auto; }
 html, body { background: var(--bg); }
 
 body {
