@@ -33,7 +33,15 @@
         </p>
         {% if deep_link %}
             <a href="{{ deep_link }}" target="_blank" class="btn btn-primary">Подключить в Telegram</a>
-            <p class="text-muted small mt-2 mb-0">Откроется бот <strong>@{{ bot_username }}</strong> — нажмите «Запустить» (Start).</p>
+            <p class="text-muted small mt-2 mb-2">Откроется бот <strong>@{{ bot_username }}</strong> — нажмите «Запустить» (Start).</p>
+            <details class="small text-muted">
+                <summary style="cursor: pointer;">Кнопка не сработала (бот уже был открыт раньше)?</summary>
+                <p class="mt-2 mb-1">Откройте чат с ботом вручную и отправьте эту команду сообщением:</p>
+                <div class="input-group mb-1" style="max-width: 480px;">
+                    <input type="text" class="form-control form-control-sm" readonly value="{{ telegram_link_command }}" id="tg-link-command">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('tg-link-command').value)">Скопировать</button>
+                </div>
+            </details>
         {% else %}
             <p class="text-danger small mb-0">Бот пока не настроен администратором.</p>
         {% endif %}
@@ -51,7 +59,15 @@
         </p>
         {% if max_deep_link %}
             <a href="{{ max_deep_link }}" target="_blank" class="btn btn-primary">Подключить в MAX</a>
-            <p class="text-muted small mt-2 mb-0">Откроется бот <strong>«Монтажники»</strong> — нажмите «Запустить».</p>
+            <p class="text-muted small mt-2 mb-2">Откроется бот <strong>«Монтажники»</strong> — нажмите «Запустить».</p>
+            <details class="small text-muted">
+                <summary style="cursor: pointer;">Кнопка не сработала (бот уже был открыт раньше)?</summary>
+                <p class="mt-2 mb-1">Откройте чат с ботом вручную и отправьте эту команду сообщением:</p>
+                <div class="input-group mb-1" style="max-width: 480px;">
+                    <input type="text" class="form-control form-control-sm" readonly value="{{ max_link_command }}" id="max-link-command">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('max-link-command').value)">Скопировать</button>
+                </div>
+            </details>
         {% else %}
             <p class="text-danger small mb-0">Бот пока не настроен администратором.</p>
         {% endif %}

@@ -38,22 +38,28 @@ class NotificationSettingsView(LoginRequiredMixin, View):
 
     def _context(self, request):
         deep_link = None
+        telegram_link_command = None
         if settings.TELEGRAM_BOT_USERNAME:
             payload = signing.dumps(request.user.pk, salt=TELEGRAM_LINK_SALT)
             deep_link = f'https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={payload}'
+            telegram_link_command = f'/start {payload}'
 
         max_deep_link = None
+        max_link_command = None
         if settings.MAX_BOT_USERNAME:
             payload = signing.dumps(request.user.pk, salt=MAX_LINK_SALT)
             max_deep_link = f'https://max.ru/{settings.MAX_BOT_USERNAME}?start={payload}'
+            max_link_command = f'/start {payload}'
 
         recent = NotificationLog.objects.filter(user=request.user).order_by('-created_at')[:20]
         return {
             'deep_link': deep_link,
             'bot_username': settings.TELEGRAM_BOT_USERNAME,
             'telegram_connected': bool(request.user.telegram_chat_id),
+            'telegram_link_command': telegram_link_command,
             'max_deep_link': max_deep_link,
             'max_bot_username': settings.MAX_BOT_USERNAME,
             'max_connected': bool(request.user.max_chat_id),
+            'max_link_command': max_link_command,
             'recent': recent,
         }

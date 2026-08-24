@@ -34,6 +34,18 @@ class NotificationSettingsTests(TestCase):
         resolved_user_id = signing.loads(payload, salt=TELEGRAM_LINK_SALT, max_age=TELEGRAM_LINK_MAX_AGE)
         self.assertEqual(resolved_user_id, self.user.pk)
 
+    def test_link_command_fallback_matches_deep_link_payload(self):
+        """Запасной вариант для случая, когда диплинк не передал payload
+        (например, чат с ботом уже открывался раньше) — та же команда,
+        которую можно отправить вручную."""
+        client = Client()
+        client.force_login(self.user)
+        response = client.get(reverse('notification_settings'))
+
+        deep_link_payload = response.context['deep_link'].split('?start=')[1]
+        command_payload = response.context['telegram_link_command'].split('/start ')[1]
+        self.assertEqual(deep_link_payload, command_payload)
+
     def test_shows_not_connected_when_no_chat_id(self):
         client = Client()
         client.force_login(self.user)
@@ -170,6 +182,15 @@ class MaxLinkSettingsTests(TestCase):
         payload = response.context['max_deep_link'].split('?start=')[1]
         resolved_user_id = signing.loads(payload, salt=MAX_LINK_SALT, max_age=MAX_LINK_MAX_AGE)
         self.assertEqual(resolved_user_id, self.user.pk)
+
+    def test_link_command_fallback_matches_deep_link_payload(self):
+        client = Client()
+        client.force_login(self.user)
+        response = client.get(reverse('notification_settings'))
+
+        deep_link_payload = response.context['max_deep_link'].split('?start=')[1]
+        command_payload = response.context['max_link_command'].split('/start ')[1]
+        self.assertEqual(deep_link_payload, command_payload)
 
     @override_settings(MAX_BOT_USERNAME='')
     def test_no_deep_link_when_bot_not_configured(self):
