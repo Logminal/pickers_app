@@ -2,81 +2,134 @@
 {% load ui_extras %}
 {% block title %}Заявка #{{ order.pk }}{% endblock %}
 {% block content %}
-<div class="content-card">
-    <div class="d-flex justify-content-between align-items-start mb-3">
-        <h1 class="h4 mb-0">Заявка #{{ order.pk }} — {{ order.furniture_type }}</h1>
-        <span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span>
+<div class="order-sticky-header">
+    {% if order.collector == user %}
+        <a href="{% url 'my_orders' %}" class="order-back-link">&larr; Мои заявки</a>
+    {% else %}
+        <a href="{% url 'order_list' %}" class="order-back-link">&larr; Доступные заявки</a>
+    {% endif %}
+
+    <div class="order-header">
+        <div>
+            <div class="order-header-title">Заявка #{{ order.pk }}</div>
+            <div class="order-header-subtitle">{{ order.furniture_type }}</div>
+        </div>
+        <span class="status-pill {{ order.status|status_class }} order-header-status">{{ order.get_status_display }}</span>
+    </div>
+    {% if order.urgency == 'urgent' or order.is_overdue %}
+    <div class="order-tags">
+        {% if order.urgency == 'urgent' %}<span class="order-tag order-tag-urgent">СРОЧНАЯ</span>{% endif %}
+        {% if order.is_overdue %}<span class="order-tag order-tag-overdue">ПРОСРОЧЕНО</span>{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="payout-hero">
+    <div class="payout-hero-label">К выплате вам</div>
+    <div class="payout-hero-value">{{ order.collector_payout_total }} ₽</div>
+    <div class="payout-hero-breakdown">
+        <div class="payout-hero-line"><span>Базовая цена</span><span>{{ order.price }} ₽</span></div>
+        {% if order.additional_works.exists %}
+            <div class="payout-hero-line"><span>Доп. работы на объекте</span><span>+ {{ order.additional_works_total }} ₽</span></div>
+        {% endif %}
+        <div class="payout-hero-line payout-hero-total"><span>Итого по заявке</span><span>{{ order.total_price }} ₽</span></div>
+    </div>
+</div>
+
+<div class="content-card order-info-card">
+    {% if order.collector_payout_amount is not None %}
+    <div class="info-row">
+        <details class="bitrix-details">
+            <summary>Разбивка Bitrix24</summary>
+            <div class="bitrix-breakdown">
+                Сумма изделия {{ order.bitrix_item_amount }} ₽ ·
+                Сборка {{ order.bitrix_assembly_percent }}% — {{ order.bitrix_assembly_amount }} ₽ ·
+                Монтаж {{ order.bitrix_installation_amount }} ₽ ·
+                Доп. услуги {{ order.bitrix_additional_services_amount }} ₽ ·
+                Подъём {{ order.bitrix_lift_amount }} ₽ ·
+                Доставка {{ order.bitrix_delivery_amount }} ₽
+            </div>
+        </details>
+    </div>
+    {% endif %}
+
+    <div class="info-row">
+        <span class="info-label">Адрес объекта</span>
+        <span class="info-value">{{ order.address }}</span>
+        <a href="https://yandex.ru/maps/?text={{ order.address|urlencode }}" target="_blank" class="chip-btn order-map-link">Открыть в картах</a>
     </div>
 
-    <table class="table table-sm w-auto">
-        <tr><th>Адрес</th><td>{{ order.address }}</td></tr>
-        <tr><th>Желаемая дата</th><td>{{ order.scheduled_at }}</td></tr>
-        <tr><th>Срок сдачи</th><td>{{ order.deadline_at }}</td></tr>
-        <tr><th>Срочность</th><td>{{ order.get_urgency_display }}</td></tr>
-        <tr><th>Габариты</th><td>{{ order.dimensions|default:'—' }}</td></tr>
-        <tr><th>Модулей</th><td>{{ order.modules_count|default:'—' }}</td></tr>
-        <tr>
-            <th>Стоимость</th>
-            <td>
-                {{ order.price }} ₽
-                {% if order.additional_works.exists %}
-                    <span class="text-muted">+ {{ order.additional_works_total }} ₽ доп. работы = <strong>{{ order.total_price }} ₽</strong></span>
-                {% endif %}
-            </td>
-        </tr>
-        {% if order.collector_payout_amount is not None %}
-        <tr>
-            <th>Сумма изделия</th>
-            <td>{{ order.bitrix_item_amount }} ₽</td>
-        </tr>
-        <tr>
-            <th>Процент сборки (цеха), %</th>
-            <td>{{ order.bitrix_assembly_percent }}% ({{ order.bitrix_assembly_amount }} ₽)</td>
-        </tr>
-        <tr>
-            <th>Монтаж</th>
-            <td>{{ order.bitrix_installation_amount }} ₽</td>
-        </tr>
-        <tr>
-            <th>Доп. услуги</th>
-            <td>{{ order.bitrix_additional_services_amount }} ₽</td>
-        </tr>
-        <tr>
-            <th>Подъём</th>
-            <td>{{ order.bitrix_lift_amount }} ₽</td>
-        </tr>
-        <tr>
-            <th>Доставка</th>
-            <td>{{ order.bitrix_delivery_amount }} ₽</td>
-        </tr>
-        <tr>
-            <th>К выплате сборщику</th>
-            <td><strong>{{ order.collector_payout_total }} ₽</strong></td>
-        </tr>
-        {% endif %}
-        <tr><th>Комментарий</th><td>{{ order.comment|default:'—' }}</td></tr>
-        {% if order.spec_file %}
-        <tr><th>Спецификация</th><td><a href="{{ order.spec_file.url }}">Скачать</a></td></tr>
-        {% endif %}
-    </table>
+    <div class="info-row info-row-split">
+        <div class="info-col">
+            <span class="info-label">Желаемая дата</span>
+            <span class="info-value">{{ order.scheduled_at }}</span>
+        </div>
+        <div class="info-col">
+            <span class="info-label">Срок сдачи</span>
+            <span class="info-value{% if order.is_overdue %} info-value-danger{% endif %}">{{ order.deadline_at }}</span>
+        </div>
+    </div>
 
+    {% if order.dimensions or order.modules_count %}
+    <div class="info-row info-row-split">
+        <div class="info-col">
+            <span class="info-label">Габариты</span>
+            <span class="info-value">{{ order.dimensions|default:'—' }}</span>
+        </div>
+        <div class="info-col">
+            <span class="info-label">Модулей</span>
+            <span class="info-value">{{ order.modules_count|default:'—' }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="info-row">
+        <span class="info-label">Комментарий менеджера</span>
+        <p class="info-text">{{ order.comment|default:'—' }}</p>
+    </div>
+
+    {% if order.status != 'published' and order.status != 'booking_revoked' and order.status != 'cancelled' %}
+    <div class="info-row">
+        <span class="info-label">Контакт на объекте</span>
+        <div class="contact-row">
+            <span class="info-value">{{ order.client_contact_name|default:'—' }}</span>
+            {% if order.client_contact_phone %}
+                <a href="tel:{{ order.client_contact_phone }}" class="chip-btn">{{ order.client_contact_phone }}</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if order.spec_file %}
+    <div class="info-row info-row-last">
+        <span class="info-label">Спецификация</span>
+        <a href="{{ order.spec_file.url }}" class="file-chip">
+            <span class="file-chip-icon">{{ order.spec_file.name|slice:"-3:"|upper }}</span>
+            <span class="file-chip-name">{{ order.spec_file|basename }}</span>
+            <span class="file-chip-size">{{ order.spec_file.size|filesizeformat }}</span>
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="order-bottom-bar">
     {% if order.status == 'published' %}
-        <form method="post" action="{% url 'order_book' order.pk %}">
+        <form method="post" action="{% url 'order_book' order.pk %}" class="order-bottom-bar-form">
             {% csrf_token %}
-            <button type="submit" class="btn btn-primary w-100">Беру в работу</button>
+            <button type="submit" class="btn-action btn-action-primary">Беру в работу</button>
         </form>
     {% elif order.collector == user %}
         {% if order.status == 'confirmed' or order.status == 'in_progress' or order.status == 'rejected_for_rework' %}
-            <a href="{% url 'report_upload' order.pk %}" class="btn btn-primary w-100">Загрузить фотоотчёт</a>
+            <a href="{% url 'report_upload' order.pk %}" class="btn-action btn-action-primary">Загрузить фотоотчёт</a>
         {% endif %}
         {% if order.status == 'closed' and order.act %}
-            <a href="{{ order.act.file.url }}" class="btn btn-outline-secondary w-100">Скачать акт приёма-передачи</a>
+            <a href="{{ order.act.file.url }}" class="btn-action btn-action-outline-primary">Скачать акт приёма-передачи</a>
         {% endif %}
         {% if order.status == 'booked' or order.status == 'report_uploaded' or order.status == 'accepted' %}
-            <p class="text-muted small mb-0">Ожидайте действий менеджера — текущий статус «{{ order.get_status_display }}».</p>
+            <div class="order-notice">Ожидайте действий менеджера — текущий статус «{{ order.get_status_display }}».</div>
         {% endif %}
     {% else %}
-        <p class="text-muted mb-0">Заявка уже забронирована другим сборщиком.</p>
+        <div class="order-notice order-notice-warning">Заявка уже забронирована другим сборщиком.</div>
     {% endif %}
 </div>
 {% endblock %}

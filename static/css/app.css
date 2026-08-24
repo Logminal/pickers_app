@@ -284,6 +284,34 @@ a:hover { color: var(--brand-dark); }
 .order-tag-urgent { background: var(--brand); color: #fff; }
 .order-tag-overdue { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(168,23,47,0.2); }
 
+/* Плашка выплаты сборщику — главное, что его интересует на этой странице,
+   поэтому вынесена наверх крупным акцентом, а не строкой в таблице. */
+.payout-hero {
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(158deg, var(--brand), var(--brand-dark));
+  color: #fff;
+  box-shadow: 0 12px 26px -14px rgba(138,53,39,0.85);
+}
+.payout-hero-label { font-weight: 700; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.66); }
+.payout-hero-value { font-weight: 800; font-size: 2.1rem; letter-spacing: -0.02em; margin-top: 0.5rem; }
+.payout-hero-breakdown {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.82);
+}
+.payout-hero-line { display: flex; justify-content: space-between; }
+.payout-hero-total { font-weight: 800; color: #fff; padding-top: 0.4rem; border-top: 1px dashed rgba(255,255,255,0.22); }
+
+.order-map-link { margin-top: 0.55rem; align-self: flex-start; }
+
 .order-info-card { padding: 0.25rem 1.1rem; }
 .info-row { padding: 0.9rem 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; }
 .info-row-last, .order-info-card .info-row:last-child { border-bottom: none; }
@@ -449,8 +477,29 @@ a:hover { color: var(--brand-dark); }
 .btn-action-outline-danger:hover { background: var(--danger-bg); }
 .btn-action-outline-info { background: var(--info-bg); color: var(--info); border: 1.5px solid rgba(37,99,168,0.3); }
 .btn-action-outline-info:hover { background: #dceafb; }
+.btn-action-primary { background: var(--brand); color: #fff; box-shadow: 0 6px 16px -8px rgba(138,53,39,0.6); }
+.btn-action-primary:hover { background: var(--brand-dark); }
+.btn-action-outline-primary { background: #fff; color: var(--brand); border: 1.5px solid rgba(138,53,39,0.3); }
+.btn-action-outline-primary:hover { background: var(--brand-light); }
 .btn-action-outline-neutral { background: transparent; color: var(--ink-muted); border: 1.5px solid var(--border); }
 .btn-action-outline-neutral:hover { background: var(--neutral-bg); }
+
+/* Нижняя панель действия на карточке заявки сборщика — по референсу
+   прижата к низу; на обычной веб-странице делаем её просто заключительным
+   блоком в потоке (без position:fixed — там ещё есть общий футер/навбар). */
+.order-bottom-bar { margin: 0.25rem 0 1.5rem; }
+.order-bottom-bar-form { margin: 0; }
+.order-notice {
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  background: #faf8f7;
+  border: 1px solid var(--border);
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #4a4340;
+}
+.order-notice-warning { background: var(--warning-bg); border-color: rgba(138,91,18,0.22); color: var(--warning); }
 
 /* Оценка и выплата (закрытая заявка) */
 .rate-payout-box {
