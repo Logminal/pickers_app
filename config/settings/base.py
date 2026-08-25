@@ -108,6 +108,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Требует, чтобы nginx всегда ставил X-Forwarded-Proto (см. конфиги на сервере).
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# Реальная отправка в Telegram/MAX/push уходит в фоновый поток, а не блокирует
+# ответ пользователю (см. apps/notifications/services.py) — сеть до этих API
+# не всегда доступна с сервера, и синхронное ожидание таймаута вешает сайт
+# при малом числе воркеров. В тестах отключается через override_settings.
+NOTIFY_ASYNC = True
+
 # Telegram Bot API (уведомления, п.6 ТЗ)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '')

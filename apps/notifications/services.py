@@ -1,9 +1,11 @@
 import json
 import logging
+import threading
 
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import connections
 from django.utils import timezone
 from pywebpush import WebPushException, webpush
 
@@ -14,14 +16,22 @@ logger = logging.getLogger(__name__)
 TELEGRAM_API_URL = 'https://api.telegram.org/bot{token}/sendMessage'
 MAX_API_URL = 'https://platform-api2.max.ru/messages'
 
+# Сеть до Telegram/MAX с этого VDS не всегда доступна (например, у Timeweb
+# бывает недоступен api.telegram.org — реальный кейс, полное зависание на
+# все 10 сек таймаута). Раньше отправка была синхронной ("без очереди —
+# экономия памяти на слабом VDS"), и один такой зависший запрос при всего
+# 2 воркерах gunicorn на одном ядре означал, что сайт переставал отвечать
+# ВСЕМ пользователям на эти же 10 секунд. NOTIFY_ASYNC уводит саму отправку
+# в отдельный поток, чтобы ответ пользователю не ждал сеть до чужого API —
+# это по-прежнему не очередь (Celery/Redis тут явно лишние), просто поток,
+# в тестах отключается через override_settings(NOTIFY_ASYNC=False) ради
+# детерминированных assert'ов сразу после notify().
+
 
 def notify(user, event_type, message, channels=None):
-    """Синхронная отправка уведомления (без очереди — экономия памяти на слабом VDS,
-    см. обсуждение архитектуры). Если начнёт тормозить запросы — тогда переходить на очередь.
-
-    Пользователь сам выбирает канал(ы) доставки в личном кабинете (notify_via_telegram/
-    notify_via_max) — по умолчанию используются они; можно передать channels явно
-    (например, notify_staff() всегда шлёт в Telegram, независимо от чьих-то настроек).
+    """Пользователь сам выбирает канал(ы) доставки в личном кабинете (notify_via_telegram/
+    notify_via_max/notify_via_push) — по умолчанию используются они; можно передать channels
+    явно (например, notify_staff() всегда шлёт в Telegram, независимо от чьих-то настроек).
     Создаёт по одной записи NotificationLog на каждый фактически использованный канал.
 
     Если у user роль менеджер/админ и настроен TELEGRAM_STAFF_GROUP_CHAT_ID,
@@ -36,12 +46,7 @@ def notify(user, event_type, message, channels=None):
         log = NotificationLog.objects.create(
             user=user, channel=channel, event_type=event_type, message=message,
         )
-        if channel == NotificationLog.Channel.TELEGRAM:
-            _send_telegram(log)
-        elif channel == NotificationLog.Channel.MAX:
-            _send_max(log)
-        elif channel == NotificationLog.Channel.PUSH:
-            _send_push(log)
+        _dispatch(channel, log)
         logs.append(log)
 
     return logs
@@ -58,7 +63,7 @@ def notify_staff(event_type, message):
         log = NotificationLog.objects.create(
             user=None, channel=NotificationLog.Channel.TELEGRAM, event_type=event_type, message=message,
         )
-        _send_telegram(log)
+        _dispatch(NotificationLog.Channel.TELEGRAM, log)
         return [log]
 
     User = get_user_model()
@@ -67,6 +72,31 @@ def notify_staff(event_type, message):
     for u in staff:
         logs.extend(notify(u, event_type, message))
     return logs
+
+
+_SENDERS = {
+    NotificationLog.Channel.TELEGRAM: '_send_telegram',
+    NotificationLog.Channel.MAX: '_send_max',
+    NotificationLog.Channel.PUSH: '_send_push',
+}
+
+
+def _dispatch(channel, log):
+    sender_name = _SENDERS.get(channel)
+    if not sender_name:
+        return
+    sender = globals()[sender_name]
+    if getattr(settings, 'NOTIFY_ASYNC', True):
+        threading.Thread(target=_send_in_background, args=(sender, log), daemon=True).start()
+    else:
+        sender(log)
+
+
+def _send_in_background(sender, log):
+    try:
+        sender(log)
+    finally:
+        connections.close_all()
 
 
 def _resolve_user_channels(user):

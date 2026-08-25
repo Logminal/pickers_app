@@ -96,7 +96,7 @@ class TelegramLinkSigningTests(TestCase):
         self.assertEqual(resolved, self.user.pk)
 
 
-@override_settings(TELEGRAM_BOT_TOKEN='fake-token-for-tests')
+@override_settings(TELEGRAM_BOT_TOKEN='fake-token-for-tests', NOTIFY_ASYNC=False)
 class StaffGroupNotificationTests(TestCase):
     """Уведомления менеджерам/админам — в общий чат, без дублирования по числу менеджеров."""
 
@@ -217,6 +217,7 @@ class MaxLinkSettingsTests(TestCase):
         self.assertTrue(response.context['max_connected'])
 
 
+@override_settings(NOTIFY_ASYNC=False)
 class ChannelPreferenceTests(TestCase):
     """Пользователь сам выбирает канал(ы) доставки уведомлений."""
 
@@ -364,7 +365,7 @@ class PushSubscriptionEndpointTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
-@override_settings(VAPID_PRIVATE_KEY='fake-private-key', VAPID_CLAIM_EMAIL='mailto:admin@example.com')
+@override_settings(VAPID_PRIVATE_KEY='fake-private-key', VAPID_CLAIM_EMAIL='mailto:admin@example.com', NOTIFY_ASYNC=False)
 class PushDeliveryTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='p2', password='x', role=User.Role.COLLECTOR)
