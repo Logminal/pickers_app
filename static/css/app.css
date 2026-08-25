@@ -1053,12 +1053,38 @@ textarea { resize: vertical; min-height: 5.5rem; }
 .list-filter-select { flex: 1; min-width: 0; }
 .list-filter-toggle { flex: none; width: auto; min-height: 38px; padding: 0 1rem; font-size: 0.8rem; }
 
-.list-order-cards { margin-top: 0; }
-.list-order-card { border-left: 4px solid var(--border); }
-.list-order-card-overdue { border-left-color: var(--danger); background: var(--danger-bg); }
-.list-order-card-booked { border-left-color: var(--warning); background: var(--warning-bg); }
-.list-order-card-review { border-left-color: var(--info); background: var(--info-bg); }
-.list-order-card-tags { margin: 0.5rem 0 0; }
+.list-order-cards { margin-top: 0; gap: 0.85rem; }
+.list-order-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ink-faint);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+.list-border-status-neutral { border-left-color: var(--ink-faint); }
+.list-border-status-warning { border-left-color: var(--warning); }
+.list-border-status-info { border-left-color: var(--info); }
+.list-border-status-brand { border-left-color: var(--brand); }
+.list-border-status-success { border-left-color: var(--success); }
+.list-border-status-danger { border-left-color: var(--danger); }
+
+.list-order-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
+.list-order-card-title-col { min-width: 0; display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.list-order-card-num { font-weight: 800; font-size: 0.95rem; color: var(--brand); flex: none; }
+.list-order-card-name { font-weight: 700; font-size: 0.95rem; color: var(--ink); }
+.list-order-card-address { margin-top: 0.3rem; font-weight: 500; font-size: 0.82rem; color: var(--ink-muted); }
+
+.list-order-card-tags { display: flex; align-items: center; gap: 0.55rem; margin-top: 0.75rem; flex-wrap: wrap; }
+.list-order-card-due { font-weight: 600; font-size: 0.78rem; color: var(--ink-muted); }
+.list-order-card-due-overdue { color: var(--danger); font-weight: 700; }
+
+.list-order-card-divider { height: 1px; background: var(--border); margin-top: 0.85rem; }
+
+.list-order-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.85rem; }
+.list-order-card-collector { font-weight: 600; font-size: 0.85rem; color: var(--ink); }
 .list-order-card-open { margin-left: auto; }
 
 .list-empty-reset { margin-top: 0.9rem; width: auto; display: inline-flex; padding: 0 1.1rem; }

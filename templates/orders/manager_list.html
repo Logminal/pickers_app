@@ -47,23 +47,30 @@
 
 <div class="job-list list-order-cards">
     {% for order in orders %}
-        <a href="{% url 'manager_order_detail' order.pk %}"
-           class="list-order-card {% if order.is_overdue %}list-order-card-overdue{% elif order.status == 'booked' %}list-order-card-booked{% elif order.status == 'report_uploaded' %}list-order-card-review{% endif %}">
-            <div class="job-card-top">
-                <div class="job-card-title"><span class="job-card-num">#{{ order.pk }}</span><span class="job-card-type">{{ order.furniture_type }} · {{ order.address }}</span></div>
-                <span class="status-pill {{ order.status|status_class }} job-card-status">{{ order.get_status_display }}</span>
+        <a href="{% url 'manager_order_detail' order.pk %}" class="list-order-card list-border-{{ order.status|status_class }}">
+            <div class="list-order-card-top">
+                <div class="list-order-card-title-col">
+                    <span class="list-order-card-num">#{{ order.pk }}</span>
+                    <span class="list-order-card-name">{{ order.furniture_type }}</span>
+                </div>
+                <span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span>
             </div>
-            <div class="order-tags list-order-card-tags">
+            <div class="list-order-card-address">{{ order.address }}</div>
+            <div class="list-order-card-tags">
                 {% if order.urgency == 'urgent' %}<span class="order-tag order-tag-urgent">СРОЧНАЯ</span>{% else %}<span class="order-tag">ОБЫЧНАЯ</span>{% endif %}
-                <span class="order-tag {% if order.is_overdue %}order-tag-overdue{% endif %}">Срок: {{ order.deadline_at }}</span>
+                <span class="list-order-card-due{% if order.is_overdue %} list-order-card-due-overdue{% endif %}">до {{ order.deadline_at|date:'d M, H:i' }}</span>
             </div>
-            <div class="job-card-bottom">
+            <div class="list-order-card-divider"></div>
+            <div class="list-order-card-bottom">
                 {% if order.collector %}
-                    <span>{{ order.collector.collector_profile.full_name|default:order.collector }}</span>
+                    <span class="list-order-card-collector">
+                        {{ order.collector.collector_profile.full_name|default:order.collector }}
+                        {% with profile=order.collector.collector_profile %}{% if profile.average_rating %}· ★ {{ profile.average_rating|floatformat:1 }}{% endif %}{% endwith %}
+                    </span>
                 {% else %}
-                    <span class="text-muted">— не забронирована</span>
+                    <span class="list-order-card-collector text-muted">— не забронирована</span>
                 {% endif %}
-                <span class="chip-btn chip-btn-accent list-order-card-open">Открыть</span>
+                <span class="chip-btn list-order-card-open">Открыть</span>
             </div>
         </a>
     {% empty %}
