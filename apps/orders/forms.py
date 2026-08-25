@@ -26,6 +26,7 @@ class OrderCreateForm(forms.ModelForm):
         widgets = {
             'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'deadline_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'urgency': forms.RadioSelect(),
             'comment': forms.Textarea(attrs={'rows': 3}),
             'price': forms.NumberInput(attrs={'min': '0.01', 'step': '0.01', 'inputmode': 'decimal', 'id': 'id_price'}),
             'modules_count': forms.NumberInput(attrs={'min': '0', 'step': '1', 'inputmode': 'numeric'}),

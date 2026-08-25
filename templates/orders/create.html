@@ -1,51 +1,165 @@
 {% extends 'base.html' %}
-{% block title %}Новая заявка{% endblock %}
+{% load static %}
+{% block title %}Создать заявку{% endblock %}
 {% block content %}
-<div class="content-card" style="max-width: 640px; margin: 0 auto;">
-    <h1 class="h4 mb-4">Создать заявку</h1>
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        {% for field in form %}
-            {% if field.name == 'bitrix_item_amount' %}
-                <div class="content-card mb-3" style="background: var(--bs-light, #f8f9fa);">
-                    <div class="small text-muted mb-2">Разбивка стоимости из Bitrix24</div>
-                    <div class="row g-2">
-                        {% for bfield in form %}
-                            {% if bfield.name in bitrix_breakdown_fields %}
-                                <div class="col-6">
-                                    <label class="form-label small" for="{{ bfield.id_for_label }}">{{ bfield.label }}</label>
-                                    {{ bfield }}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    <div id="bitrix-total-hint" class="small mt-2 text-muted"></div>
-                </div>
-            {% elif field.name in bitrix_breakdown_fields %}
-                {# отрендерено выше блоком разбивки #}
-            {% else %}
-                <div class="mb-3">
-                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {% if field.name == 'bitrix_deal_id' %}
-                        <div class="d-flex gap-2">
-                            {{ field }}
-                            <button type="button" id="bitrix-pull-price" class="btn btn-outline-secondary btn-sm text-nowrap">
-                                Подтянуть цену
-                            </button>
-                        </div>
-                        <div id="bitrix-pull-status" class="small mt-1"></div>
-                    {% else %}
-                        {{ field }}
-                    {% endif %}
-                    {% for error in field.errors %}
-                        <div class="text-danger small">{{ error }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endfor %}
-        <button type="submit" class="btn btn-primary w-100">Опубликовать заявку</button>
-    </form>
+<div class="order-sticky-header">
+    <a href="{% url 'manager_order_list' %}" class="order-back-link">&larr; Заявки</a>
+    <div class="order-header-title">Создать заявку</div>
+    <div class="order-header-subtitle">После публикации заявку смогут забронировать сборщики</div>
 </div>
+
+<form method="post" enctype="multipart/form-data" id="order-create-form">
+    {% csrf_token %}
+
+    <div class="content-card form-section-card">
+        <div class="form-section-header"><span class="form-section-num">1</span><span class="form-section-title">Мебель и специализация</span></div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.furniture_type.id_for_label }}">Тип мебели <span class="form-required">*</span></label>
+            {{ form.furniture_type }}
+            {% for error in form.furniture_type.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.required_specialization.id_for_label }}">Требуемая специализация</label>
+            {{ form.required_specialization }}
+            <div class="form-field-hint">Необязательно — сузит круг доступных сборщиков</div>
+        </div>
+    </div>
+
+    <div class="content-card form-section-card">
+        <div class="form-section-header"><span class="form-section-num">2</span><span class="form-section-title">Адрес и сроки</span></div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.address.id_for_label }}">Адрес объекта <span class="form-required">*</span></label>
+            {{ form.address }}
+            {% for error in form.address.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-row-2">
+            <div class="form-field">
+                <label class="form-field-label" for="{{ form.scheduled_at.id_for_label }}">Желаемая дата <span class="form-required">*</span></label>
+                {{ form.scheduled_at }}
+            </div>
+            <div class="form-field">
+                <label class="form-field-label" for="{{ form.deadline_at.id_for_label }}">Срок сдачи <span class="form-required">*</span></label>
+                {{ form.deadline_at }}
+            </div>
+        </div>
+        {% for error in form.scheduled_at.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+        {% for error in form.deadline_at.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+
+        <div class="form-field">
+            <span class="form-field-label">Срочность</span>
+            <div class="form-urgency-toggle">
+                {% for radio in form.urgency %}
+                    <label class="form-urgency-btn{% if radio.data.value == 'urgent' %} form-urgency-btn-urgent{% endif %}">
+                        {{ radio.tag }}
+                        <span>{{ radio.choice_label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card form-section-card">
+        <div class="form-section-header"><span class="form-section-num">3</span><span class="form-section-title">Спецификация</span></div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.spec_file.id_for_label }}">Спецификация из Базиса</label>
+            <label class="form-file-btn" for="{{ form.spec_file.id_for_label }}" id="spec-file-label">📎 Загрузить файл спецификации</label>
+            {{ form.spec_file }}
+            {% for error in form.spec_file.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+            <div class="form-field-hint">PDF или чертёж из Базиса — сборщик увидит файл в карточке</div>
+        </div>
+
+        <div class="form-row-mixed">
+            <div class="form-field">
+                <label class="form-field-label" for="{{ form.dimensions.id_for_label }}">Габариты</label>
+                {{ form.dimensions }}
+            </div>
+            <div class="form-field">
+                <label class="form-field-label" for="{{ form.modules_count.id_for_label }}">Модулей</label>
+                {{ form.modules_count }}
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card form-section-card">
+        <div class="form-section-header"><span class="form-section-num">4</span><span class="form-section-title">Стоимость и Bitrix24</span></div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.bitrix_deal_id.id_for_label }}">Номер сделки в Bitrix24</label>
+            <div class="form-inline-btn-row">
+                {{ form.bitrix_deal_id }}
+                <button type="button" id="bitrix-pull-price" class="chip-btn chip-btn-dark text-nowrap">Подтянуть цену</button>
+            </div>
+            <div id="bitrix-pull-status" class="form-field-hint"></div>
+        </div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.price.id_for_label }}">Стоимость работы, ₽ <span class="form-required">*</span></label>
+            {{ form.price }}
+            {% for error in form.price.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="bitrix-breakdown-card">
+            <div class="bitrix-breakdown-top">
+                <span class="bitrix-breakdown-title">Разбивка из Bitrix24</span>
+                <span class="bitrix-readonly-badge" id="bitrix-readonly-badge">ТОЛЬКО ЧТЕНИЕ</span>
+            </div>
+            <div class="bitrix-breakdown-grid">
+                <div class="bitrix-breakdown-item">
+                    <span class="form-field-label">{{ form.bitrix_item_amount.label }}</span>
+                    {{ form.bitrix_item_amount }}
+                </div>
+                <div class="bitrix-breakdown-item">
+                    <span class="form-field-label">{{ form.bitrix_assembly_percent.label }}</span>
+                    {{ form.bitrix_assembly_percent }}
+                </div>
+                <div class="bitrix-breakdown-item">
+                    <span class="form-field-label">{{ form.bitrix_installation_amount.label }}</span>
+                    {{ form.bitrix_installation_amount }}
+                </div>
+                <div class="bitrix-breakdown-item">
+                    <span class="form-field-label">{{ form.bitrix_additional_services_amount.label }}</span>
+                    {{ form.bitrix_additional_services_amount }}
+                </div>
+                <div class="bitrix-breakdown-item">
+                    <span class="form-field-label">{{ form.bitrix_lift_amount.label }}</span>
+                    {{ form.bitrix_lift_amount }}
+                </div>
+                <div class="bitrix-breakdown-item">
+                    <span class="form-field-label">{{ form.bitrix_delivery_amount.label }}</span>
+                    {{ form.bitrix_delivery_amount }}
+                </div>
+            </div>
+            <div class="bitrix-breakdown-hint" id="bitrix-total-hint">Поля заполняются автоматически кнопкой «Подтянуть цену» — вручную не редактируются.</div>
+        </div>
+    </div>
+
+    <div class="content-card form-section-card">
+        <div class="form-section-header"><span class="form-section-num">5</span><span class="form-section-title">Контакты клиента</span></div>
+
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.client_contact_name.id_for_label }}">ФИО на объекте</label>
+            {{ form.client_contact_name }}
+        </div>
+        <div class="form-field">
+            <label class="form-field-label" for="{{ form.client_contact_phone.id_for_label }}">Телефон клиента</label>
+            {{ form.client_contact_phone }}
+            {% for error in form.client_contact_phone.errors %}<div class="form-field-error">{{ error }}</div>{% endfor %}
+        </div>
+    </div>
+
+    <div class="content-card form-section-card">
+        <div class="form-section-header"><span class="form-section-num">6</span><span class="form-section-title">Комментарий</span></div>
+        {{ form.comment }}
+    </div>
+
+    <button type="submit" class="btn-action btn-action-primary form-submit-btn">Опубликовать заявку</button>
+</form>
+<script src="{% static 'js/order-create-ui.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -56,17 +170,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const dealIdInput = document.getElementById('id_bitrix_deal_id');
         const priceInput = document.getElementById('id_price');
         const statusEl = document.getElementById('bitrix-pull-status');
+        const badgeEl = document.getElementById('bitrix-readonly-badge');
         const dealId = dealIdInput.value.trim();
 
         if (!dealId) {
             statusEl.textContent = 'Сначала укажите номер сделки.';
-            statusEl.className = 'small mt-1 text-danger';
+            statusEl.className = 'form-field-hint form-field-error';
             return;
         }
 
         btn.disabled = true;
         statusEl.textContent = 'Запрашиваю у Bitrix24...';
-        statusEl.className = 'small mt-1 text-muted';
+        statusEl.className = 'form-field-hint';
 
         try {
             const resp = await fetch('{% url "bitrix_deal_price" %}?deal_id=' + encodeURIComponent(dealId));
@@ -85,16 +200,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (hintEl) {
                     hintEl.textContent = 'Итого: ' + data.total + ' ₽. К выплате сборщику: ' + data.payout + ' ₽ (процент сборки + монтаж + доп. услуги).';
                 }
+                if (badgeEl) {
+                    badgeEl.textContent = 'ЗАПОЛНЕНО ИЗ BITRIX24';
+                    badgeEl.classList.add('bitrix-readonly-badge-filled');
+                }
 
                 statusEl.textContent = 'Разбивка подтянута' + (data.title ? ' («' + data.title + '»)' : '') + '.';
-                statusEl.className = 'small mt-1 text-success';
+                statusEl.className = 'form-field-hint form-field-success';
             } else {
                 statusEl.textContent = data.error || 'Не удалось получить цену.';
-                statusEl.className = 'small mt-1 text-danger';
+                statusEl.className = 'form-field-hint form-field-error';
             }
         } catch (err) {
             statusEl.textContent = 'Ошибка сети при обращении к Bitrix24.';
-            statusEl.className = 'small mt-1 text-danger';
+            statusEl.className = 'form-field-hint form-field-error';
         } finally {
             btn.disabled = false;
         }
