@@ -6,6 +6,7 @@ class NotificationLog(models.Model):
     class Channel(models.TextChoices):
         TELEGRAM = 'telegram', 'Telegram'
         MAX = 'max', 'MAX'
+        PUSH = 'push', 'Push (браузер)'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Ожидает отправки'
@@ -31,3 +32,25 @@ class NotificationLog(models.Model):
 
     def __str__(self):
         return f'{self.event_type} -> {self.user or "общий чат менеджеров"} [{self.status}]'
+
+
+class PushSubscription(models.Model):
+    """Подписка браузера на Web Push (RFC 8291/8292) — один пользователь может
+    иметь несколько подписок (телефон + компьютер и т.д.), шлём во все сразу."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='push_subscriptions', verbose_name='Пользователь',
+    )
+    endpoint = models.URLField('Endpoint', max_length=500, unique=True)
+    p256dh = models.CharField('Ключ p256dh', max_length=255)
+    auth = models.CharField('Ключ auth', max_length=255)
+    user_agent = models.CharField('User-Agent', max_length=255, blank=True)
+    created_at = models.DateTimeField('Подключено', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Push-подписка браузера'
+        verbose_name_plural = 'Push-подписки браузера'
+
+    def __str__(self):
+        return f'{self.user} — {self.endpoint[:60]}'

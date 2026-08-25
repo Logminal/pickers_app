@@ -1,11 +1,13 @@
+import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from pywebpush import WebPushException
 
-from .models import NotificationLog
+from .models import NotificationLog, PushSubscription
 from .services import notify, notify_staff
 from .views import MAX_LINK_MAX_AGE, MAX_LINK_SALT, TELEGRAM_LINK_MAX_AGE, TELEGRAM_LINK_SALT
 
@@ -289,3 +291,119 @@ class ChannelPreferenceTests(TestCase):
     def test_max_without_chat_id_fails(self):
         logs = notify(self.user, 'some_event', 'Текст', channels=[NotificationLog.Channel.MAX])
         self.assertEqual(logs[0].status, NotificationLog.Status.FAILED)
+
+
+class PushSubscriptionEndpointTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='p1', password='x', role=User.Role.COLLECTOR)
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_subscribe_creates_subscription_and_enables_push(self):
+        payload = {'endpoint': 'https://push.example.com/abc', 'keys': {'p256dh': 'pkey', 'auth': 'akey'}}
+        response = self.client.post(
+            reverse('push_subscribe'), data=json.dumps(payload), content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(PushSubscription.objects.filter(user=self.user, endpoint=payload['endpoint']).exists())
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.notify_via_push)
+
+    def test_subscribe_twice_with_same_endpoint_updates_not_duplicates(self):
+        payload = {'endpoint': 'https://push.example.com/abc', 'keys': {'p256dh': 'pkey', 'auth': 'akey'}}
+        self.client.post(reverse('push_subscribe'), data=json.dumps(payload), content_type='application/json')
+        self.client.post(reverse('push_subscribe'), data=json.dumps(payload), content_type='application/json')
+
+        self.assertEqual(PushSubscription.objects.filter(endpoint=payload['endpoint']).count(), 1)
+
+    def test_subscribe_rejects_malformed_payload(self):
+        response = self.client.post(
+            reverse('push_subscribe'), data=json.dumps({'nope': True}), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_unsubscribe_removes_subscription_and_disables_push_when_last_one(self):
+        PushSubscription.objects.create(user=self.user, endpoint='https://push.example.com/abc', p256dh='p', auth='a')
+        self.user.notify_via_push = True
+        self.user.save()
+
+        response = self.client.post(
+            reverse('push_unsubscribe'),
+            data=json.dumps({'endpoint': 'https://push.example.com/abc'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(PushSubscription.objects.filter(user=self.user).exists())
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.notify_via_push)
+
+    def test_unsubscribe_keeps_push_enabled_if_other_subscriptions_remain(self):
+        PushSubscription.objects.create(user=self.user, endpoint='https://push.example.com/a', p256dh='p', auth='a')
+        PushSubscription.objects.create(user=self.user, endpoint='https://push.example.com/b', p256dh='p', auth='a')
+        self.user.notify_via_push = True
+        self.user.save()
+
+        self.client.post(
+            reverse('push_unsubscribe'),
+            data=json.dumps({'endpoint': 'https://push.example.com/a'}),
+            content_type='application/json',
+        )
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.notify_via_push)
+
+    def test_requires_login(self):
+        self.client.logout()
+        response = self.client.post(
+            reverse('push_subscribe'),
+            data=json.dumps({'endpoint': 'x', 'keys': {'p256dh': 'p', 'auth': 'a'}}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+@override_settings(VAPID_PRIVATE_KEY='fake-private-key', VAPID_CLAIM_EMAIL='mailto:admin@example.com')
+class PushDeliveryTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='p2', password='x', role=User.Role.COLLECTOR)
+        self.user.notify_via_push = True
+        self.user.save()
+        self.sub = PushSubscription.objects.create(
+            user=self.user, endpoint='https://push.example.com/abc', p256dh='pkey', auth='akey',
+        )
+
+    @patch('apps.notifications.services.webpush')
+    def test_notify_sends_push_when_enabled(self, mock_webpush):
+        logs = notify(self.user, 'some_event', 'Текст', channels=[NotificationLog.Channel.PUSH])
+
+        self.assertEqual(logs[0].status, NotificationLog.Status.SENT)
+        self.assertEqual(mock_webpush.call_count, 1)
+        call = mock_webpush.call_args
+        self.assertEqual(call.kwargs['subscription_info']['endpoint'], self.sub.endpoint)
+
+    @patch('apps.notifications.services.webpush')
+    def test_expired_subscription_is_deleted_on_410(self, mock_webpush):
+        response = type('Resp', (), {'status_code': 410})()
+        mock_webpush.side_effect = WebPushException('gone', response=response)
+
+        logs = notify(self.user, 'some_event', 'Текст', channels=[NotificationLog.Channel.PUSH])
+
+        self.assertEqual(logs[0].status, NotificationLog.Status.FAILED)
+        self.assertFalse(PushSubscription.objects.filter(pk=self.sub.pk).exists())
+
+    def test_push_without_subscriptions_fails(self):
+        self.sub.delete()
+        logs = notify(self.user, 'some_event', 'Текст', channels=[NotificationLog.Channel.PUSH])
+        self.assertEqual(logs[0].status, NotificationLog.Status.FAILED)
+
+    @override_settings(VAPID_PRIVATE_KEY='')
+    def test_push_without_vapid_key_configured_fails(self):
+        logs = notify(self.user, 'some_event', 'Текст', channels=[NotificationLog.Channel.PUSH])
+        self.assertEqual(logs[0].status, NotificationLog.Status.FAILED)
+
+    @patch('apps.notifications.services.webpush')
+    def test_resolve_user_channels_includes_push_when_enabled(self, mock_webpush):
+        logs = notify(self.user, 'some_event', 'Текст')
+        self.assertIn(NotificationLog.Channel.PUSH, {log.channel for log in logs})

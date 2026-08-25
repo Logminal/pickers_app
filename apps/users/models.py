@@ -16,6 +16,7 @@ class User(AbstractUser):
 
     notify_via_telegram = models.BooleanField('Уведомления в Telegram', default=True)
     notify_via_max = models.BooleanField('Уведомления в MAX', default=False)
+    notify_via_push = models.BooleanField('Push-уведомления в браузере', default=False)
 
     class Meta:
         verbose_name = 'Пользователь'

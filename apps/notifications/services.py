@@ -1,11 +1,13 @@
+import json
 import logging
 
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from pywebpush import WebPushException, webpush
 
-from .models import NotificationLog
+from .models import NotificationLog, PushSubscription
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,8 @@ def notify(user, event_type, message, channels=None):
             _send_telegram(log)
         elif channel == NotificationLog.Channel.MAX:
             _send_max(log)
+        elif channel == NotificationLog.Channel.PUSH:
+            _send_push(log)
         logs.append(log)
 
     return logs
@@ -73,6 +77,8 @@ def _resolve_user_channels(user):
         channels.append(NotificationLog.Channel.TELEGRAM)
     if getattr(user, 'notify_via_max', False):
         channels.append(NotificationLog.Channel.MAX)
+    if getattr(user, 'notify_via_push', False):
+        channels.append(NotificationLog.Channel.PUSH)
     return channels or [NotificationLog.Channel.TELEGRAM]
 
 
@@ -129,4 +135,48 @@ def _send_max(log: NotificationLog):
     except requests.RequestException:
         logger.exception('Не удалось отправить MAX-уведомление user_id=%s', log.user_id)
         log.status = NotificationLog.Status.FAILED
+    log.save(update_fields=['status', 'sent_at'])
+
+
+def _send_push(log: NotificationLog):
+    """Шлём во все подписки пользователя разом (может быть несколько устройств/
+    браузеров) — успех, если хотя бы одна доставка прошла. Битые подписки
+    (404/410 — пользователь отключил уведомления в браузере или переустановил
+    PWA) удаляем сразу, чтобы не пытаться слать в них снова и снова."""
+    if not log.user or not settings.VAPID_PRIVATE_KEY:
+        log.status = NotificationLog.Status.FAILED
+        log.save(update_fields=['status'])
+        return
+
+    subscriptions = list(log.user.push_subscriptions.all())
+    if not subscriptions:
+        log.status = NotificationLog.Status.FAILED
+        log.save(update_fields=['status'])
+        return
+
+    payload = json.dumps({'title': 'Сборка мебели', 'body': log.message})
+    sent = False
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': sub.endpoint,
+                    'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+                },
+                data=payload,
+                vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                vapid_claims={'sub': settings.VAPID_CLAIM_EMAIL},
+                timeout=10,
+            )
+            sent = True
+        except WebPushException as exc:
+            status_code = getattr(exc.response, 'status_code', None)
+            if status_code in (404, 410):
+                sub.delete()
+            else:
+                logger.exception('Не удалось отправить push-уведомление user_id=%s', log.user_id)
+
+    log.status = NotificationLog.Status.SENT if sent else NotificationLog.Status.FAILED
+    if sent:
+        log.sent_at = timezone.now()
     log.save(update_fields=['status', 'sent_at'])

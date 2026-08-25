@@ -38,3 +38,37 @@ self.addEventListener('fetch', (event) => {
             .catch(() => caches.match(event.request)),
     );
 });
+
+// Web Push — уведомление от самого приложения (см. apps/notifications).
+self.addEventListener('push', (event) => {
+    let payload = { title: 'Сборка мебели', body: '' };
+    try {
+        payload = { ...payload, ...event.data.json() };
+    } catch (e) {
+        payload.body = event.data ? event.data.text() : '';
+    }
+    event.waitUntil(
+        self.registration.showNotification(payload.title, {
+            body: payload.body,
+            icon: '/static/icons/icon-192.png',
+            badge: '/static/icons/icon-192.png',
+            data: { url: payload.url || '/' },
+        }),
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+            for (const client of clients) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    client.navigate(url);
+                    return client.focus();
+                }
+            }
+            return self.clients.openWindow(url);
+        }),
+    );
+});

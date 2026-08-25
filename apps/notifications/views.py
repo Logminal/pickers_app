@@ -1,12 +1,15 @@
+import json
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core import signing
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 
-from .models import NotificationLog
+from .models import NotificationLog, PushSubscription
 
 # Соль для подписи deep-link'а — отдельная от остальных сигнатур в проекте,
 # чтобы протечка одной не давала подделать другую.
@@ -61,5 +64,46 @@ class NotificationSettingsView(LoginRequiredMixin, View):
             'max_bot_username': settings.MAX_BOT_USERNAME,
             'max_connected': bool(request.user.max_chat_id),
             'max_link_command': max_link_command,
+            'vapid_public_key': settings.VAPID_PUBLIC_KEY,
+            'push_connected': request.user.push_subscriptions.exists(),
             'recent': recent,
         }
+
+
+class PushSubscribeView(LoginRequiredMixin, View):
+    """Браузер прислал подписку (результат pushManager.subscribe()) — сохраняем
+    и включаем push как канал доставки для пользователя."""
+
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            endpoint = data['endpoint']
+            p256dh = data['keys']['p256dh']
+            auth = data['keys']['auth']
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'ok': False, 'error': 'Некорректные данные подписки'}, status=400)
+
+        PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={
+                'user': request.user, 'p256dh': p256dh, 'auth': auth,
+                'user_agent': request.META.get('HTTP_USER_AGENT', '')[:255],
+            },
+        )
+        request.user.notify_via_push = True
+        request.user.save(update_fields=['notify_via_push'])
+        return JsonResponse({'ok': True})
+
+
+class PushUnsubscribeView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            endpoint = json.loads(request.body)['endpoint']
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'ok': False, 'error': 'Некорректные данные'}, status=400)
+
+        request.user.push_subscriptions.filter(endpoint=endpoint).delete()
+        if not request.user.push_subscriptions.exists():
+            request.user.notify_via_push = False
+            request.user.save(update_fields=['notify_via_push'])
+        return JsonResponse({'ok': True})

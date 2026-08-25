@@ -137,6 +137,13 @@ MAX_CA_BUNDLE = str(BASE_DIR / 'certs' / 'russian_trusted_ca_bundle.pem')
 # (уточнено с заказчиком: цена хранится именно в сделке, не в товаре каталога).
 BITRIX_WEBHOOK_URL = os.getenv('BITRIX_WEBHOOK_URL', '')
 
+# Web Push (RFC 8291/8292) — третий канал уведомлений, приходит от самого
+# приложения (не через Telegram/MAX), работает даже когда PWA закрыто.
+# Сгенерировать пару ключей: manage.py generate_vapid_keys
+VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
+VAPID_CLAIM_EMAIL = os.getenv('VAPID_CLAIM_EMAIL', '')
+
 # Открытый вопрос №3 из ТЗ: лимит одновременно забронированных заявок у одного
 # сборщика, чтобы не набирал больше, чем может выполнить. Значение по умолчанию —
 # временное, обсудить с заказчиком и вынести в справочник/настройки компании при необходимости.

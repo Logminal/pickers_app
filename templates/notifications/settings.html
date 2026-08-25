@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load ui_extras %}
+{% load ui_extras static %}
 {% block title %}Уведомления{% endblock %}
 {% block content %}
 <h1 class="h4 mb-4">Уведомления</h1>
@@ -75,6 +75,24 @@
 </div>
 
 <div class="content-card">
+    <h2 class="h6 mb-3">Push-уведомления в браузере</h2>
+    {% if push_connected %}
+        <span class="status-pill status-success">Подключено ✅</span>
+        <p class="text-muted small mt-2 mb-2">Уведомления приходят прямо от приложения — даже когда вкладка/PWA закрыты.</p>
+        <button type="button" id="push-toggle-btn" data-action="disable" class="btn btn-outline-secondary btn-sm">Отключить</button>
+        <p id="push-status" class="text-muted small mt-2 mb-0"></p>
+    {% else %}
+        <p class="text-muted small mb-3">
+            Работает как отдельный канал — без Telegram и MAX. На iPhone нужно предварительно
+            добавить сайт на экран «Домой» (кнопка «Поделиться» → «На экран Домой»), на Android
+            работает и в обычной вкладке браузера.
+        </p>
+        <button type="button" id="push-toggle-btn" data-action="enable" {% if vapid_public_key %}data-vapid-key="{{ vapid_public_key }}"{% endif %} class="btn btn-primary">Включить push-уведомления</button>
+        <p id="push-status" class="text-muted small mt-2 mb-0"></p>
+    {% endif %}
+</div>
+
+<div class="content-card">
     <h2 class="h6 mb-3">Последние уведомления</h2>
     {% if recent %}
     <div class="table-responsive">
@@ -96,4 +114,5 @@
     <p class="text-muted mb-0">Пока нет уведомлений.</p>
     {% endif %}
 </div>
+<script src="{% static 'js/push-notifications.js' %}"></script>
 {% endblock %}
