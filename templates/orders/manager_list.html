@@ -1,102 +1,92 @@
 {% extends 'base.html' %}
 {% load ui_extras %}
-{% block title %}Все заявки{% endblock %}
+{% block title %}Заявки{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Заявки</h1>
-    <a href="{% url 'order_create' %}" class="btn btn-primary btn-sm">+ Новая заявка</a>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <a href="?status=booked" class="stat-card stat-active">
-            <div class="stat-value">{{ awaiting_confirmation_count }}</div>
-            <div class="stat-label">Ждут подтверждения брони</div>
-        </a>
-    </div>
-    <div class="col-md-4">
-        <a href="?status=report_uploaded" class="stat-card stat-active">
-            <div class="stat-value">{{ report_review_count }}</div>
-            <div class="stat-label">Отчёты на проверке</div>
-        </a>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card {% if overdue_count %}stat-danger-accent{% endif %}">
-            <div class="stat-value" style="{% if overdue_count %}color: var(--danger);{% endif %}">{{ overdue_count }}</div>
-            <div class="stat-label">Просрочено</div>
+<div class="order-sticky-header">
+    <div class="profile-page-top">
+        <div>
+            <div class="order-header-title">Заявки</div>
+            <div class="order-header-subtitle">{{ page_obj.paginator.count }} в текущем фильтре</div>
         </div>
+        <a href="{% url 'order_create' %}" class="btn-action btn-action-primary list-new-btn">+ Новая</a>
     </div>
 </div>
 
-<form method="get" class="row g-2 mb-3 align-items-center">
-    <div class="col-auto">
-        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="">Все активные</option>
-            {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <a href="?view=closed" class="btn btn-sm {% if current_view == 'closed' %}btn-dark{% else %}btn-outline-dark{% endif %}">
-            Закрытые/отменённые
-        </a>
-    </div>
-    <div class="col-auto">
-        <input type="text" name="q" class="form-control form-control-sm" placeholder="Поиск по адресу" value="{{ search_query }}">
-    </div>
-    <div class="col-auto">
-        <button class="btn btn-sm btn-outline-secondary" type="submit">Найти</button>
-    </div>
+<div class="list-stat-row">
+    <a href="?status=booked" class="list-stat-chip list-stat-chip-warning">
+        <span class="list-stat-chip-value">{{ awaiting_confirmation_count }}</span>
+        <span class="list-stat-chip-label">Ждут подтверждения</span>
+    </a>
+    <a href="?status=report_uploaded" class="list-stat-chip list-stat-chip-info">
+        <span class="list-stat-chip-value">{{ report_review_count }}</span>
+        <span class="list-stat-chip-label">Отчёты на проверке</span>
+    </a>
+    <span class="list-stat-chip {% if overdue_count %}list-stat-chip-danger{% else %}list-stat-chip-info{% endif %}">
+        <span class="list-stat-chip-value">{{ overdue_count }}</span>
+        <span class="list-stat-chip-label">Просрочено</span>
+    </span>
+</div>
+
+<form method="get" class="list-search-row">
+    <span class="list-search-icon">⌕</span>
+    <input type="text" name="q" class="list-search-input" placeholder="Поиск по адресу" value="{{ search_query }}">
+    <button class="btn-action btn-action-dark list-search-btn" type="submit">Найти</button>
 </form>
 
-<div class="table-responsive">
-<table class="table table-hover mb-0">
-    <thead>
-        <tr><th>#</th><th>Тип</th><th>Статус</th><th>Срочность</th><th>Сборщик</th><th>Срок сдачи</th><th></th></tr>
-    </thead>
-    <tbody>
+<form method="get" class="list-filter-row" id="list-filter-form">
+    <select name="status" class="form-select form-select-sm list-filter-select" onchange="this.form.submit()">
+        <option value="">Все активные</option>
+        {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <a href="?view=closed" class="btn-action {% if current_view == 'closed' %}btn-action-dark{% else %}btn-action-outline-neutral{% endif %} list-filter-toggle">
+        Закрытые
+    </a>
+</form>
+
+<div class="job-list list-order-cards">
     {% for order in orders %}
-        <tr class="{% if order.is_overdue %}row-overdue{% elif order.status == 'booked' %}row-booked{% elif order.status == 'report_uploaded' %}row-review{% endif %}">
-            <td><a href="{% url 'manager_order_detail' order.pk %}">#{{ order.pk }}</a></td>
-            <td>{{ order.furniture_type }}</td>
-            <td><span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span></td>
-            <td>{% if order.urgency == 'urgent' %}<span class="status-pill status-danger">Срочная</span>{% else %}<span class="text-muted small">Обычная</span>{% endif %}</td>
-            <td>
+        <a href="{% url 'manager_order_detail' order.pk %}"
+           class="list-order-card {% if order.is_overdue %}list-order-card-overdue{% elif order.status == 'booked' %}list-order-card-booked{% elif order.status == 'report_uploaded' %}list-order-card-review{% endif %}">
+            <div class="job-card-top">
+                <div class="job-card-title"><span class="job-card-num">#{{ order.pk }}</span><span class="job-card-type">{{ order.furniture_type }} · {{ order.address }}</span></div>
+                <span class="status-pill {{ order.status|status_class }} job-card-status">{{ order.get_status_display }}</span>
+            </div>
+            <div class="order-tags list-order-card-tags">
+                {% if order.urgency == 'urgent' %}<span class="order-tag order-tag-urgent">СРОЧНАЯ</span>{% else %}<span class="order-tag">ОБЫЧНАЯ</span>{% endif %}
+                <span class="order-tag {% if order.is_overdue %}order-tag-overdue{% endif %}">Срок: {{ order.deadline_at }}</span>
+            </div>
+            <div class="job-card-bottom">
                 {% if order.collector %}
-                    <a href="{% url 'collector_profile_detail' order.collector.pk %}">
-                        {{ order.collector.collector_profile.full_name|default:order.collector }}
-                    </a>
-                    {% with profile=order.collector.collector_profile %}
-                        {% if profile.average_rating %}
-                            <span class="text-muted small">⭐ {{ profile.average_rating|floatformat:1 }}</span>
-                        {% endif %}
-                    {% endwith %}
+                    <span>{{ order.collector.collector_profile.full_name|default:order.collector }}</span>
                 {% else %}
-                    <span class="text-muted">—</span>
+                    <span class="text-muted">— не забронирована</span>
                 {% endif %}
-            </td>
-            <td>{{ order.deadline_at }}</td>
-            <td><a href="{% url 'manager_order_detail' order.pk %}" class="btn btn-sm btn-outline-primary">Открыть</a></td>
-        </tr>
+                <span class="chip-btn chip-btn-accent list-order-card-open">Открыть</span>
+            </div>
+        </a>
     {% empty %}
-        <tr><td colspan="7" class="text-muted text-center py-4">Заявок не найдено.</td></tr>
+        <div class="empty-state">
+            <p class="mb-2">Ничего не найдено.</p>
+            <a href="{% url 'manager_order_list' %}" class="btn-action btn-action-outline-neutral list-empty-reset">Сбросить фильтры</a>
+        </div>
     {% endfor %}
-    </tbody>
-</table>
 </div>
 
 {% if is_paginated %}
-<nav class="mt-3">
-    <ul class="pagination">
-        {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ current_status }}&q={{ search_query }}">Назад</a></li>
-        {% endif %}
-        <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span></li>
-        {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ current_status }}&q={{ search_query }}">Вперёд</a></li>
-        {% endif %}
-    </ul>
+<nav class="list-pagination">
+    {% if page_obj.has_previous %}
+        <a class="btn-action btn-action-outline-neutral list-pagination-btn" href="?page={{ page_obj.previous_page_number }}&status={{ current_status }}&q={{ search_query }}">&larr; Назад</a>
+    {% else %}
+        <span class="btn-action btn-action-outline-neutral list-pagination-btn list-pagination-disabled">&larr; Назад</span>
+    {% endif %}
+    <span class="list-pagination-page">Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a class="btn-action btn-action-outline-neutral list-pagination-btn" href="?page={{ page_obj.next_page_number }}&status={{ current_status }}&q={{ search_query }}">Вперёд &rarr;</a>
+    {% else %}
+        <span class="btn-action btn-action-outline-neutral list-pagination-btn list-pagination-disabled">Вперёд &rarr;</span>
+    {% endif %}
 </nav>
 {% endif %}
 {% endblock %}

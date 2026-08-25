@@ -1023,6 +1023,52 @@ textarea { resize: vertical; min-height: 5.5rem; }
 .alert-info { background: var(--info-bg); color: #1e3a8a; border-color: #bfdbfe; }
 
 /* ============================================================
+   Список заявок (менеджер) — по макету Claude Design
+   ============================================================ */
+
+.list-new-btn { flex: none; width: auto; min-height: 38px; padding: 0 1rem; font-size: 0.8rem; }
+.order-header-subtitle { font-weight: 600; font-size: 0.78rem; color: var(--ink-muted); margin-top: 0.15rem; }
+
+.list-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.9rem; }
+.list-stat-chip {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 0.6rem 0.65rem; border-radius: 12px; text-decoration: none;
+  background: var(--neutral-bg); border: 1px solid var(--border);
+}
+.list-stat-chip-value { font-weight: 800; font-size: 1.15rem; color: var(--ink); line-height: 1; }
+.list-stat-chip-label { font-weight: 600; font-size: 0.66rem; line-height: 1.3; color: var(--ink-muted); }
+.list-stat-chip-warning { background: var(--warning-bg); border-color: rgba(138,91,18,0.2); }
+.list-stat-chip-warning .list-stat-chip-value { color: var(--warning); }
+.list-stat-chip-info { background: var(--info-bg); border-color: rgba(37,99,168,0.2); }
+.list-stat-chip-info .list-stat-chip-value { color: var(--info); }
+.list-stat-chip-danger { background: var(--danger-bg); border-color: rgba(168,23,47,0.2); }
+.list-stat-chip-danger .list-stat-chip-value { color: var(--danger); }
+
+.list-search-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.list-search-icon { flex: none; font-size: 1.05rem; color: var(--ink-faint); }
+.list-search-input { flex: 1; min-width: 0; }
+.list-search-btn { flex: none; width: auto; min-height: 38px; padding: 0 1rem; font-size: 0.8rem; }
+
+.list-filter-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; }
+.list-filter-select { flex: 1; min-width: 0; }
+.list-filter-toggle { flex: none; width: auto; min-height: 38px; padding: 0 1rem; font-size: 0.8rem; }
+
+.list-order-cards { margin-top: 0; }
+.list-order-card { border-left: 4px solid var(--border); }
+.list-order-card-overdue { border-left-color: var(--danger); background: var(--danger-bg); }
+.list-order-card-booked { border-left-color: var(--warning); background: var(--warning-bg); }
+.list-order-card-review { border-left-color: var(--info); background: var(--info-bg); }
+.list-order-card-tags { margin: 0.5rem 0 0; }
+.list-order-card-open { margin-left: auto; }
+
+.list-empty-reset { margin-top: 0.9rem; width: auto; display: inline-flex; padding: 0 1.1rem; }
+
+.list-pagination { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 1rem; }
+.list-pagination-btn { flex: none; width: auto; padding: 0 1rem; min-height: 40px; font-size: 0.8rem; }
+.list-pagination-disabled { opacity: 0.4; pointer-events: none; }
+.list-pagination-page { font-weight: 700; font-size: 0.78rem; color: var(--ink-muted); }
+
+/* ============================================================
    Мой профиль (сборщик) — по макету Claude Design
    ============================================================ */
 
