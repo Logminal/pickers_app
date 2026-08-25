@@ -1,106 +1,150 @@
 {% extends 'base.html' %}
+{% load static ui_extras %}
 {% block title %}Проверка фотоотчёта — заявка #{{ order.pk }}{% endblock %}
 {% block content %}
-<a href="{% url 'manager_order_detail' order.pk %}" class="btn btn-link ps-0">&larr; К заявке #{{ order.pk }}</a>
-<h1 class="h4 mb-4">Проверка фотоотчёта — заявка #{{ order.pk }}</h1>
+<div class="order-sticky-header">
+    <a href="{% url 'manager_order_detail' order.pk %}" class="order-back-link">&larr; К заявке #{{ order.pk }}</a>
+    <div class="order-header-title">Проверка фотоотчёта — заявка #{{ order.pk }}</div>
+    <div class="review-meta-row">
+        <span class="status-pill {{ order.status|status_class }}">{{ order.get_status_display }}</span>
+        {% if report.submitted_at %}
+            <span class="review-meta-text">
+                {% if order.collector %}{{ order.collector.collector_profile.full_name|default:order.collector }} · {% endif %}{{ report.submitted_at }}
+            </span>
+        {% endif %}
+    </div>
+</div>
 
 <div class="content-card">
-    <h2 class="h6 mb-3">📷 Фото</h2>
-    <div class="row g-3">
+    <div class="section-title-row">
+        <span class="section-title">📷 Фото</span>
+        <span class="log-count">{{ report.photos.count }} файлов</span>
+    </div>
+    <div class="review-photo-grid">
         {% for photo in report.photos.all %}
-            <div class="col-md-3">
-                <img src="{{ photo.file.url }}" class="img-fluid rounded" alt="{{ photo.slot.title }}" style="border: 1px solid var(--border);">
-                <p class="small text-muted mb-0 mt-1">{{ photo.slot.title }}</p>
+            <button type="button" class="review-photo-item" data-lightbox-src="{{ photo.file.url }}" data-lightbox-label="{{ photo.slot.title }}">
+                <img src="{{ photo.file.url }}" alt="{{ photo.slot.title }}" class="review-photo-thumb">
+                <span class="review-photo-caption">{{ photo.slot.title }}</span>
+            </button>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="content-card">
+    <div class="section-title-row">
+        <span class="section-title">✅ Чек-лист сборщика</span>
+        <span class="log-count {% if all_checked %}log-count-good{% endif %}">{{ checked_count }} из {{ report.checklist_items.count }}</span>
+    </div>
+    <div class="review-checklist">
+        {% for item in report.checklist_items.all %}
+            <div class="review-checklist-row">
+                <span class="review-checklist-mark {% if item.is_checked %}review-checklist-mark-ok{% else %}review-checklist-mark-bad{% endif %}">{% if item.is_checked %}✅{% else %}❌{% endif %}</span>
+                <span class="review-checklist-text{% if not item.is_checked %} review-checklist-text-bad{% endif %}">{{ item.title }}</span>
             </div>
         {% endfor %}
     </div>
 </div>
 
 <div class="content-card">
-    <h2 class="h6 mb-3">✅ Чек-лист сборщика</h2>
-    <ul class="list-group mb-3">
-        {% for item in report.checklist_items.all %}
-            <li class="list-group-item">
-                {% if item.is_checked %}✅{% else %}❌{% endif %} {{ item.title }}
-            </li>
-        {% endfor %}
-    </ul>
-    <p class="mb-0"><strong>Комментарий сборщика:</strong> {{ report.comment|default:'—' }}</p>
+    <div class="section-title">Комментарий сборщика</div>
+    <p class="info-text mt-2">{{ report.comment|default:'—' }}</p>
 </div>
 
 {% if order.additional_works.exists %}
 <div class="content-card">
-    <h2 class="h6 mb-3">➕ Дополнительные работы сверх заявки</h2>
-    <div class="table-responsive">
-    <table class="table table-sm w-auto mb-0">
-        <thead><tr><th>Описание</th><th>Стоимость</th></tr></thead>
-        <tbody>
+    <div class="section-title">➕ Доп. работы сверх заявки</div>
+    <div class="review-extras-list">
         {% for work in order.additional_works.all %}
-            <tr><td>{{ work.description }}</td><td>{{ work.price }} ₽</td></tr>
+            <div class="review-extras-row"><span>{{ work.description }}</span><span>{{ work.price }} ₽</span></div>
         {% endfor %}
-        <tr class="fw-bold"><td>Итого с учётом допработ</td><td>{{ order.total_price }} ₽</td></tr>
-        </tbody>
-    </table>
+    </div>
+    <div class="extras-total">
+        <span>Итого с учётом допработ</span>
+        <span>{{ order.total_price }} ₽</span>
     </div>
 </div>
 {% endif %}
 
-<div class="content-card">
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" name="action" value="accept" class="btn btn-success">Принять</button>
-        <button type="button" class="btn btn-outline-danger" data-bs-toggle="collapse" data-bs-target="#rejectBox">Отклонить</button>
-        <div class="collapse mt-3" id="rejectBox">
-            <textarea class="form-control mb-2" name="comment" placeholder="Причина отклонения"></textarea>
-            <button type="submit" name="action" value="reject" class="btn btn-danger">Отправить на доработку</button>
-        </div>
-    </form>
-</div>
-
-<div class="content-card">
-    <h2 class="h6 mb-3">📄 Акт приёма-передачи</h2>
+<div class="content-card" id="act-review-card">
+    <div class="section-title">📄 Акт приёма-передачи</div>
     {% if order.furniture_type.act_template_file %}
-        <p><a href="{{ order.furniture_type.act_template_file.url }}" target="_blank">Скачать пустой бланк акта для «{{ order.furniture_type }}»</a></p>
+        <a href="{{ order.furniture_type.act_template_file.url }}" target="_blank" class="file-chip mt-2">
+            <span class="file-chip-icon">PDF</span>
+            <span class="file-chip-name">Пустой бланк · {{ order.furniture_type }}</span>
+            <span class="file-chip-size">Скачать</span>
+        </a>
     {% endif %}
+
     {% if order.act %}
-        <div class="mb-2">
-            <img src="{{ order.act.file.url }}" alt="Акт приёма-передачи" class="img-fluid rounded mb-1" style="max-height: 320px; border: 1px solid var(--border);">
-            <p class="small text-muted mb-1">
-                Прикрепил: {{ order.act.uploaded_by|default:'—' }}
-                {% if not order.act.is_readable_confirmed %}
-                    <span class="status-pill status-warning">Читаемость не подтверждена</span>
-                {% else %}
-                    <span class="status-pill status-success">Читаемость подтверждена</span>
-                {% endif %}
-            </p>
-            <a href="{{ order.act.file.url }}" target="_blank" class="small">Открыть в полном размере</a>
+        <div class="act-review-row">
+            <a href="{{ order.act.file.url }}" target="_blank" class="act-review-thumb-link">
+                <img src="{{ order.act.file.url }}" alt="Акт приёма-передачи" class="act-review-thumb">
+            </a>
+            <div class="act-review-info">
+                <span class="act-review-filename">{{ order.act.file|basename }}</span>
+                <span class="act-review-by">Прикрепил {{ order.act.uploaded_by|default:'—' }} · {{ order.act.updated_at }}</span>
+                <span class="status-pill {% if order.act.is_readable_confirmed %}status-success{% else %}status-warning{% endif %} act-review-legible-pill">
+                    {% if order.act.is_readable_confirmed %}ЧИТАЕМОСТЬ ПОДТВЕРЖДЕНА{% else %}ЧИТАЕМОСТЬ НЕ ПОДТВЕРЖДЕНА{% endif %}
+                </span>
+            </div>
         </div>
     {% else %}
-        <p class="text-muted small">Сборщик ещё не прикрепил акт.</p>
-    {% endif %}
-    {% if not order.act or not order.act.is_readable_confirmed %}
-        <form method="post" action="{% url 'act_upload' order.pk %}" enctype="multipart/form-data" class="mb-0">
-            {% csrf_token %}
-            <div class="mb-2">
-                <label class="form-label" for="{{ act_form.act_file.id_for_label }}">{{ act_form.act_file.label }}</label>
-                {{ act_form.act_file }}
-            </div>
-            <div class="form-check mb-2">
-                {{ act_form.is_readable_confirmed }}
-                <label class="form-check-label" for="{{ act_form.is_readable_confirmed.id_for_label }}">
-                    {{ act_form.is_readable_confirmed.label }}
-                </label>
-            </div>
-            <button type="submit" class="btn btn-secondary btn-sm">{% if order.act %}Подтвердить акт{% else %}Прикрепить акт{% endif %}</button>
-        </form>
+        <p class="text-muted small mt-2">Сборщик ещё не прикрепил акт.</p>
     {% endif %}
 
-    {% if order.status == 'accepted' and order.act and order.act.is_readable_confirmed %}
-        <form method="post" action="{% url 'order_close' order.pk %}" class="mt-3">
+    {% if not order.act or not order.act.is_readable_confirmed %}
+        <form method="post" action="{% url 'act_upload' order.pk %}" enctype="multipart/form-data" class="mt-2">
             {% csrf_token %}
-            <button type="submit" class="btn btn-primary btn-sm">Закрыть заявку</button>
+            <label class="checklist-row act-confirm-row" for="{{ act_form.is_readable_confirmed.id_for_label }}">
+                {{ act_form.is_readable_confirmed }}
+                <span class="checklist-text">{{ act_form.is_readable_confirmed.label }}</span>
+            </label>
+            <label class="act-replace-btn" for="{{ act_form.act_file.id_for_label }}">Заменить файл акта (необязательно)</label>
+            {{ act_form.act_file }}
+            <button type="submit" class="btn-action btn-action-primary mt-2">{% if order.act %}Подтвердить акт{% else %}Прикрепить акт{% endif %}</button>
         </form>
     {% endif %}
 </div>
 
+<div class="content-card">
+    <div class="section-title">Решение по отчёту</div>
+
+    {% if order.status == 'report_uploaded' %}
+        <form method="post" class="review-decision-form" id="review-decision-form">
+            {% csrf_token %}
+            <div class="review-decision-buttons" id="review-decision-buttons">
+                <button type="submit" name="action" value="accept" class="btn-action btn-action-success">Принять</button>
+                <button type="button" class="btn-action btn-action-outline-danger" id="review-start-reject">Отклонить</button>
+            </div>
+            <div class="review-reject-panel" id="review-reject-panel" hidden>
+                <span class="info-label">Причина отклонения</span>
+                <textarea class="form-control mt-2" name="comment" id="review-reject-reason" placeholder="Что переснять или доделать — сборщик увидит текст целиком" rows="3"></textarea>
+                <button type="submit" name="action" value="reject" class="btn-action btn-action-danger mt-2">Отправить на доработку</button>
+                <button type="button" class="btn-action btn-action-outline-neutral mt-2" id="review-cancel-reject">Отмена</button>
+            </div>
+        </form>
+    {% elif order.status == 'accepted' or order.status == 'closed' %}
+        <div class="review-decision-note review-decision-note-success">Отчёт принят.</div>
+    {% elif order.status == 'rejected_for_rework' %}
+        <div class="review-decision-note review-decision-note-danger">Отправлено на доработку — сборщик получил уведомление с причиной{% if report.manager_comment %}: «{{ report.manager_comment }}»{% endif %}.</div>
+    {% endif %}
+</div>
+
+{% if order.status == 'accepted' and order.act and order.act.is_readable_confirmed %}
+<div class="order-bottom-bar">
+    <form method="post" action="{% url 'order_close' order.pk %}" class="order-bottom-bar-form">
+        {% csrf_token %}
+        <button type="submit" class="btn-action btn-action-dark">Закрыть заявку</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="review-lightbox" id="review-lightbox" hidden>
+    <div class="review-lightbox-header">
+        <span id="review-lightbox-label"></span>
+        <button type="button" class="review-lightbox-close" id="review-lightbox-close">✕</button>
+    </div>
+    <img id="review-lightbox-img" class="review-lightbox-img" alt="">
+</div>
+<script src="{% static 'js/report-review-ui.js' %}"></script>
 {% endblock %}

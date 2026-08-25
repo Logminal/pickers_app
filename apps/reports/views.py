@@ -88,8 +88,13 @@ class PhotoReportReviewView(ManagerRequiredMixin, View):
 
     def get(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
+        report = order.photo_report
+        checklist_items = list(report.checklist_items.all())
+        checked_count = sum(1 for item in checklist_items if item.is_checked)
         return render(request, self.template_name, {
-            'order': order, 'report': order.photo_report, 'act_form': ActUploadForm(),
+            'order': order, 'report': report, 'act_form': ActUploadForm(),
+            'checked_count': checked_count,
+            'all_checked': checklist_items and checked_count == len(checklist_items),
         })
 
     def post(self, request, pk):
