@@ -1022,6 +1022,18 @@ textarea { resize: vertical; min-height: 5.5rem; }
 .alert-warning { background: var(--warning-bg); color: #78350f; border-color: #fde68a; }
 .alert-info { background: var(--info-bg); color: #1e3a8a; border-color: #bfdbfe; }
 
+/* ============================================================
+   Мой профиль (сборщик) — по макету Claude Design
+   ============================================================ */
+
+.profile-page-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.profile-edit-btn { flex: none; width: auto; min-height: 38px; padding: 0 0.9rem; font-size: 0.78rem; }
+
+.pending-change-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.pending-change-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; font-size: 0.82rem; }
+.pending-change-field { font-weight: 700; color: var(--ink); }
+.pending-change-value { font-weight: 500; color: var(--ink-muted); text-align: right; }
+
 @media (max-width: 767px) {
   body { font-size: 1rem; }
   .content-card { padding: 1rem; }

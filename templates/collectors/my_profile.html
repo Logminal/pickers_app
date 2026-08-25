@@ -2,67 +2,97 @@
 {% load ui_extras %}
 {% block title %}Мой профиль{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Мой профиль</h1>
-    <a href="{% url 'profile_edit' %}" class="btn btn-primary btn-sm">Изменить данные</a>
-</div>
-
-<div class="content-card">
-    <div class="row">
-        <div class="col-md-3 text-center mb-4 mb-md-0">
-            {% if profile.profile_photo %}
-                <img src="{{ profile.profile_photo.url }}" class="img-fluid rounded mb-2" alt="{{ profile.full_name }}">
-            {% endif %}
-            <div><span class="status-pill {{ profile.status|status_class }}">{{ profile.get_status_display }}</span></div>
-        </div>
-        <div class="col-md-9">
-            <h2 class="h5 mb-1">{{ profile.full_name }}</h2>
-            <table class="table table-sm w-auto">
-                <tr><th>Телефон</th><td>{{ profile.user.phone|default:'—' }}</td></tr>
-                <tr><th>Email</th><td>{{ profile.user.email|default:'—' }}</td></tr>
-                <tr><th>Регион</th><td>{{ profile.region|default:'—' }}</td></tr>
-                <tr><th>Специализации</th><td>{% for s in profile.specializations.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td></tr>
-                <tr><th>Стаж</th><td>{{ profile.experience_years }} лет</td></tr>
-                <tr><th>Инструмент</th><td>{% if profile.has_own_tools %}Есть{% else %}Нет{% endif %}</td></tr>
-                <tr><th>Автомобиль</th><td>{% if profile.has_car %}Есть{% else %}Нет{% endif %}</td></tr>
-                <tr>
-                    <th>Рейтинг</th>
-                    <td>{% if profile.average_rating %}⭐ {{ profile.average_rating|floatformat:1 }}/5 ({{ profile.ratings_count }}){% else %}Пока нет оценок{% endif %}</td>
-                </tr>
-                {% if profile.payment_details %}
-                <tr><th>Способ оплаты</th><td>{{ profile.payment_details.get_method_display }}</td></tr>
-                {% endif %}
-            </table>
-        </div>
+<div class="order-sticky-header">
+    <div class="profile-page-top">
+        <div class="order-header-title">Мой профиль</div>
+        <a href="{% url 'profile_edit' %}" class="btn-action btn-action-outline-primary profile-edit-btn">Изменить данные</a>
     </div>
 </div>
 
-{% if pending_requests %}
-<div class="content-card">
-    <h2 class="h6 mb-3">⏳ На рассмотрении у менеджера</h2>
-    {% for req in pending_requests %}
-        <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-            <p class="small text-muted mb-1">Отправлено {{ req.created_at }}</p>
-            <ul class="mb-0 small">
-                {% for key, value in req.changes.items %}
-                    <li><strong>{{ field_labels|get_item:key }}</strong>: {{ value }}</li>
-                {% endfor %}
-            </ul>
+<div class="content-card order-info-card">
+    <div class="profile-header">
+        <div class="profile-avatar-col">
+            {% if profile.profile_photo %}
+                <img src="{{ profile.profile_photo.url }}" class="profile-avatar-photo" alt="{{ profile.full_name }}">
+            {% else %}
+                <div class="profile-avatar">{{ profile.full_name|initials }}</div>
+            {% endif %}
+            <span class="status-pill {{ profile.status|status_class }} profile-status-pill">{{ profile.get_status_display }}</span>
         </div>
-    {% endfor %}
+        <div class="profile-header-body">
+            <div class="profile-header-name">{{ profile.full_name }}</div>
+            <div class="profile-header-meta">ID сборщика: {{ profile.user.pk }} · анкета #{{ profile.pk }}</div>
+            <div class="profile-header-rating">
+                {% if profile.average_rating %}
+                    <span class="profile-rating-value">★ {{ profile.average_rating|floatformat:1 }}</span>
+                    <span class="profile-rating-count">{{ profile.ratings_count }} оценок</span>
+                {% else %}
+                    <span class="profile-rating-count">Пока нет оценок</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-field-row"><span class="profile-field-label">Телефон</span><span class="profile-field-value">{{ profile.user.phone|default:'—' }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Email</span><span class="profile-field-value">{{ profile.user.email|default:'—' }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Регион</span><span class="profile-field-value">{{ profile.region|default:'—' }}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Специализации</span><span class="profile-field-value">{% for s in profile.specializations.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Стаж</span><span class="profile-field-value">{{ profile.experience_years }} лет</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Свой инструмент</span><span class="profile-field-value{% if profile.has_own_tools %} profile-field-value-good{% endif %}">{% if profile.has_own_tools %}Есть{% else %}Нет{% endif %}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Автомобиль</span><span class="profile-field-value{% if profile.has_car %} profile-field-value-good{% endif %}">{% if profile.has_car %}Есть{% else %}Нет{% endif %}</span></div>
+    <div class="profile-field-row"><span class="profile-field-label">Рейтинг</span><span class="profile-field-value profile-field-value-rating">{% if profile.average_rating %}★ {{ profile.average_rating|floatformat:1 }} / 5{% else %}Пока нет оценок{% endif %}</span></div>
+    {% if profile.payment_details %}
+    <div class="profile-field-row profile-field-row-last"><span class="profile-field-label">Способ оплаты</span><span class="profile-field-value">{{ profile.payment_details.get_method_display }}</span></div>
+    {% endif %}
+</div>
+
+{% if pending_requests %}
+<div class="content-card notes-card">
+    <div class="section-title-row">
+        <span class="section-title">⏳ На рассмотрении</span>
+        <span class="notes-internal-tag">У МЕНЕДЖЕРА</span>
+    </div>
+    <p class="notes-note">Изменения вступят в силу после проверки менеджером — до этого в анкете действуют текущие данные.</p>
+    <div class="job-list notes-list">
+        {% for req in pending_requests %}
+            <div class="note-card">
+                <div class="note-meta">Отправлено {{ req.created_at }}</div>
+                <ul class="pending-change-list">
+                    {% for key, value in req.changes.items %}
+                        <li><span class="pending-change-field">{{ field_labels|get_item:key }}</span><span class="pending-change-value">{{ value }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 
 {% if history %}
 <div class="content-card">
-    <h2 class="h6 mb-3">История изменений</h2>
-    {% for req in history %}
-        <div class="mb-2 d-flex align-items-center gap-2">
-            <span class="status-pill {{ req.status|status_class }}">{{ req.get_status_display }}</span>
-            <span class="text-muted small">{{ req.reviewed_at|default:req.created_at }}</span>
-            {% if req.review_comment %}<span class="small">— {{ req.review_comment }}</span>{% endif %}
+    <div class="section-title-row">
+        <span class="section-title">История изменений</span>
+    </div>
+    <div class="timeline">
+        {% for req in history %}
+        <div class="timeline-item">
+            <div class="timeline-dot-col">
+                <span class="timeline-dot {{ req.status|status_class }}"></span>
+                {% if not forloop.last %}<span class="timeline-line"></span>{% endif %}
+            </div>
+            <div class="timeline-content">
+                <div class="timeline-pills">
+                    <span class="tiny-pill {{ req.status|status_class }}">{{ req.get_status_display }}</span>
+                </div>
+                <div class="timeline-who">
+                    {% for key, value in req.changes.items %}{{ field_labels|get_item:key }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </div>
+                {% if req.review_comment %}<div class="timeline-comment">{{ req.review_comment }}</div>{% endif %}
+                <div class="timeline-date">{{ req.reviewed_at|default:req.created_at }}</div>
+            </div>
         </div>
-    {% endfor %}
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 {% endblock %}
