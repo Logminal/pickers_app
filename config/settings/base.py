@@ -103,6 +103,11 @@ PRIVATE_STORAGE_ROOT = BASE_DIR / 'private_storage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# За nginx TLS завершается на прокси — без этого Django не видит запрос как
+# HTTPS и SECURE_SSL_REDIRECT в prod/staging уходит в бесконечный редирект.
+# Требует, чтобы nginx всегда ставил X-Forwarded-Proto (см. конфиги на сервере).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Telegram Bot API (уведомления, п.6 ТЗ)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '')
