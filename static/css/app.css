@@ -5,6 +5,44 @@
    для истории статусов, компактные чипы вместо голых ссылок.
    ============================================================ */
 
+/* Шрифты размещены вместе с приложением, чтобы интерфейс полностью загружался
+   в сетях, где Google Fonts недоступен или открывается только через VPN. */
+@font-face {
+  font-family: 'Manrope';
+  src: url('../vendor/fonts/manrope-400.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('../vendor/fonts/manrope-500.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('../vendor/fonts/manrope-600.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('../vendor/fonts/manrope-700.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('../vendor/fonts/manrope-800.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
 :root {
   --ink: #1d1614;
   --ink-muted: #8a7d78;

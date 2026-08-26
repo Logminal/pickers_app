@@ -13,6 +13,7 @@ from .base import *  # noqa
 DEBUG = False
 
 ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h]
+CSRF_TRUSTED_ORIGINS = [f'https://{host}' for host in ALLOWED_HOSTS]
 
 DATABASES = {
     'default': {

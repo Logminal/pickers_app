@@ -1,6 +1,18 @@
+from django.template.loader import render_to_string
 from django.test import TestCase
 
 from apps.core.templatetags.ui_extras import basename, initials, stars
+
+
+class BaseTemplateAssetTests(TestCase):
+    def test_critical_ui_assets_are_served_locally(self):
+        html = render_to_string('base.html')
+
+        self.assertIn('/static/vendor/bootstrap/bootstrap.min.css', html)
+        self.assertIn('/static/vendor/bootstrap/bootstrap.bundle.min.js', html)
+        self.assertNotIn('fonts.googleapis.com', html)
+        self.assertNotIn('fonts.gstatic.com', html)
+        self.assertNotIn('cdn.jsdelivr.net', html)
 
 
 class InitialsFilterTests(TestCase):
