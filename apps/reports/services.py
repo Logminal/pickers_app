@@ -6,6 +6,7 @@ from apps.orders.models import Order, OrderStatusHistory
 
 from .forms import DEFAULT_CHECKLIST
 from .models import Act, AdditionalWork, ChecklistItem, Photo, PhotoReport
+from .video import compress_photo_report_video_async
 
 
 @transaction.atomic
@@ -27,6 +28,9 @@ def submit_photo_report(
     if video is not None:
         report.video = video
     report.save()
+
+    if video is not None:
+        transaction.on_commit(lambda: compress_photo_report_video_async(report.pk))
 
     report.photos.all().delete()
     for slot_id, uploaded_file in slot_files.items():

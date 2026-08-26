@@ -417,3 +417,137 @@ class VideoReportTests(TestCase):
         client.force_login(self.manager)
         response = client.get(reverse('report_review', args=[self.order.pk]))
         self.assertNotContains(response, '<video')
+
+    def test_submit_report_with_video_schedules_compression_after_commit(self):
+        from unittest.mock import patch
+
+        photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        video = SimpleUploadedFile('clip.mp4', b'fake-video-bytes', content_type='video/mp4')
+
+        with patch('apps.reports.services.compress_photo_report_video_async') as mocked:
+            with self.captureOnCommitCallbacks(execute=True):
+                report = submit_photo_report(
+                    order=self.order, collector=self.collector,
+                    slot_files={self.slot.id: photo}, checked_items=[], comment='Готово', video=video,
+                )
+            mocked.assert_called_once_with(report.pk)
+
+    def test_submit_report_without_video_does_not_schedule_compression(self):
+        from unittest.mock import patch
+
+        photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
+
+        with patch('apps.reports.services.compress_photo_report_video_async') as mocked:
+            with self.captureOnCommitCallbacks(execute=True):
+                submit_photo_report(
+                    order=self.order, collector=self.collector,
+                    slot_files={self.slot.id: photo}, checked_items=[], comment='Готово',
+                )
+            mocked.assert_not_called()
+
+
+class VideoCompressionTests(TestCase):
+    """apps.reports.video.compress_photo_report_video — синхронная логика сжатия,
+    вызывается напрямую (без потока/on_commit) для детерминированности тестов."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager4', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector4', password='x', role=User.Role.COLLECTOR)
+        CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+        self.template = PhotoSlotTemplate.objects.create(name='Кухня — сжатие')
+        self.slot = PhotoSlotDefinition.objects.create(
+            template=self.template, title='Общий вид', is_required=True, order=0,
+        )
+        self.ft = FurnitureType.objects.create(name='Кухня', photo_slots_template=self.template)
+        self.order = Order.objects.create(
+            furniture_type=self.ft, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=Decimal('10000'),
+            status=Order.Status.PUBLISHED, created_by=self.manager,
+        )
+        book_order(self.order.pk, self.collector)
+        confirm_booking(self.order.pk, self.manager)
+        self.order.refresh_from_db()
+
+        photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        video = SimpleUploadedFile('clip.mp4', b'original-video-bytes-0123456789', content_type='video/mp4')
+        self.report = submit_photo_report(
+            order=self.order, collector=self.collector,
+            slot_files={self.slot.id: photo}, checked_items=[], comment='Готово', video=video,
+        )
+
+    def test_skips_when_ffmpeg_not_found(self):
+        from unittest.mock import patch
+
+        from .video import compress_photo_report_video
+
+        original_name = self.report.video.name
+        with patch('apps.reports.video.shutil.which', return_value=None):
+            compress_photo_report_video(self.report.pk)
+
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.video.name, original_name)
+
+    def test_keeps_original_when_ffmpeg_fails(self):
+        import subprocess
+        from unittest.mock import patch
+
+        from .video import compress_photo_report_video
+
+        original_name = self.report.video.name
+        with patch('apps.reports.video.shutil.which', return_value='/usr/bin/ffmpeg'), \
+             patch('apps.reports.video.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'ffmpeg')):
+            compress_photo_report_video(self.report.pk)
+
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.video.name, original_name)
+
+    def test_keeps_original_when_compressed_not_smaller(self):
+        from unittest.mock import patch
+
+        from .video import compress_photo_report_video
+
+        original_name = self.report.video.name
+
+        def fake_run(cmd, **kwargs):
+            target_path = cmd[-1]
+            with open(target_path, 'wb') as fh:
+                fh.write(b'0' * 1000)  # заведомо больше исходных ~32 байт
+
+        with patch('apps.reports.video.shutil.which', return_value='/usr/bin/ffmpeg'), \
+             patch('apps.reports.video.subprocess.run', side_effect=fake_run):
+            compress_photo_report_video(self.report.pk)
+
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.video.name, original_name)
+
+    def test_replaces_video_when_compressed_is_smaller(self):
+        from unittest.mock import patch
+
+        from .video import compress_photo_report_video
+
+        original_name = self.report.video.name
+
+        def fake_run(cmd, **kwargs):
+            target_path = cmd[-1]
+            with open(target_path, 'wb') as fh:
+                fh.write(b'x')  # заведомо меньше исходного файла
+
+        with patch('apps.reports.video.shutil.which', return_value='/usr/bin/ffmpeg'), \
+             patch('apps.reports.video.subprocess.run', side_effect=fake_run):
+            compress_photo_report_video(self.report.pk)
+
+        self.report.refresh_from_db()
+        self.assertNotEqual(self.report.video.name, original_name)
+        self.assertTrue(self.report.video.name.endswith('.mp4'))
+        self.assertEqual(self.report.video.read(), b'x')
+
+    def test_missing_report_does_not_crash(self):
+        from unittest.mock import patch
+
+        from .video import compress_photo_report_video
+
+        with patch('apps.reports.video.shutil.which', return_value='/usr/bin/ffmpeg'):
+            compress_photo_report_video(999999)  # не существует — не должно падать

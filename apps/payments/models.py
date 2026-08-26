@@ -1,7 +1,10 @@
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
 
 from apps.core.models import TimeStampedModel
+
+RECEIPT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf']
 
 
 class PaymentRecord(TimeStampedModel):
@@ -85,6 +88,12 @@ class WithdrawalRequest(TimeStampedModel):
         related_name='handled_withdrawal_requests', verbose_name='Кто обработал',
     )
     completed_at = models.DateTimeField('Дата выплаты', null=True, blank=True)
+    # Обязателен при завершении выплаты переводом (card_transfer/phone_transfer) —
+    # см. services.complete_withdrawal_request. Для in_person не нужен.
+    receipt = models.FileField(
+        'Чек/квитанция о переводе', upload_to='payments/receipts/%Y/%m/', null=True, blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=RECEIPT_EXTENSIONS)],
+    )
 
     class Meta:
         ordering = ['-created_at']

@@ -1,6 +1,15 @@
 from django import forms
+from django.core.validators import FileExtensionValidator
 
-from .models import WithdrawalRequest
+from .models import RECEIPT_EXTENSIONS, WithdrawalRequest
+
+MAX_RECEIPT_SIZE_MB = 8
+
+
+def _validate_receipt_size(uploaded_file):
+    max_bytes = MAX_RECEIPT_SIZE_MB * 1024 * 1024
+    if uploaded_file.size > max_bytes:
+        raise forms.ValidationError(f'Файл слишком большой — максимум {MAX_RECEIPT_SIZE_MB} МБ.')
 
 
 class WithdrawalRequestForm(forms.Form):
@@ -24,6 +33,19 @@ class WithdrawalRequestForm(forms.Form):
             if not cleaned.get('requisite'):
                 raise forms.ValidationError('Укажите номер карты или телефона для перевода.')
         return cleaned
+
+
+class WithdrawalReceiptForm(forms.Form):
+    """Чек/квитанция о переводе — прикрепляется менеджером при завершении выплаты
+    переводом (см. services.complete_withdrawal_request). Для 'лично в руки' не нужен,
+    поэтому поле необязательное здесь — реальная обязательность проверяется в сервисе
+    по способу получения конкретной заявки."""
+
+    receipt = forms.FileField(
+        label='Чек/квитанция о переводе', required=False,
+        validators=[FileExtensionValidator(allowed_extensions=RECEIPT_EXTENSIONS), _validate_receipt_size],
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+    )
 
 
 class RatingForm(forms.Form):

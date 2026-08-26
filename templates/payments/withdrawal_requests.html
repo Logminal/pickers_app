@@ -23,8 +23,14 @@
             {% if req.comment %}<tr><th>Комментарий</th><td>{{ req.comment }}</td></tr>{% endif %}
         </table>
 
-        <form method="post" action="{% url 'withdrawal_request_complete' req.pk %}" class="d-flex gap-2 align-items-start flex-wrap">
+        <form method="post" action="{% url 'withdrawal_request_complete' req.pk %}" enctype="multipart/form-data" class="d-flex gap-2 align-items-start flex-wrap">
             {% csrf_token %}
+            {% if req.method != 'in_person' %}
+            <div class="w-100">
+                <label class="form-label small mb-1">Чек/квитанция о переводе <span class="text-danger">*</span></label>
+                <input type="file" name="receipt" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf" required>
+            </div>
+            {% endif %}
             <button type="submit" name="action" value="complete" class="btn btn-sm btn-success"
                     onclick="return confirm('Подтвердить, что выплата {{ req.amount }} ₽ произведена сборщику?');">
                 Отметить выплаченным

@@ -2,7 +2,9 @@ import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.collectors.models import CollectorProfile
@@ -120,7 +122,8 @@ class WithdrawalRequestTests(TestCase):
 
     def test_complete_withdrawal_marks_payment_records_paid(self):
         wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.PHONE_TRANSFER, requisite='+79990001122')
-        complete_withdrawal_request(wr, self.manager)
+        receipt = SimpleUploadedFile('receipt.pdf', b'fake-receipt-bytes', content_type='application/pdf')
+        complete_withdrawal_request(wr, self.manager, receipt=receipt)
 
         wr.refresh_from_db()
         record = PaymentRecord.objects.get(order=self.order)
@@ -128,6 +131,7 @@ class WithdrawalRequestTests(TestCase):
         self.assertEqual(wr.status, WithdrawalRequest.Status.COMPLETED)
         self.assertEqual(wr.handled_by, self.manager)
         self.assertTrue(record.is_paid)
+        self.assertTrue(wr.receipt)
 
     def test_cancel_withdrawal_does_not_mark_paid(self):
         wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.IN_PERSON)
@@ -160,3 +164,88 @@ class WithdrawalRequestTests(TestCase):
 
         wr2 = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.IN_PERSON)
         self.assertEqual(wr2.amount, Decimal('2000'))
+
+
+class WithdrawalReceiptTests(TestCase):
+    """Чек/квитанция обязателен при завершении выплаты переводом (не для 'лично в руки')."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager_receipt', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector_receipt', password='x', role=User.Role.COLLECTOR)
+        CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+        )
+        ft = FurnitureType.objects.create(name='Кухня')
+        self.order = Order.objects.create(
+            furniture_type=ft, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=Decimal('8000'),
+            status=Order.Status.CLOSED, created_by=self.manager, collector=self.collector,
+        )
+        create_payment_record(self.order)
+
+    def test_card_transfer_without_receipt_raises(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.CARD_TRANSFER, requisite='1234')
+        with self.assertRaises(WithdrawalRequestError):
+            complete_withdrawal_request(wr, self.manager)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.PENDING)
+
+    def test_card_transfer_with_receipt_succeeds(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.CARD_TRANSFER, requisite='1234')
+        receipt = SimpleUploadedFile('receipt.jpg', b'fake-receipt-bytes', content_type='image/jpeg')
+        complete_withdrawal_request(wr, self.manager, receipt=receipt)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.COMPLETED)
+        self.assertTrue(wr.receipt)
+
+    def test_in_person_does_not_require_receipt(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.IN_PERSON)
+        complete_withdrawal_request(wr, self.manager)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.COMPLETED)
+        self.assertFalse(wr.receipt)
+
+    def test_view_rejects_transfer_completion_without_receipt(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.PHONE_TRANSFER, requisite='+7900')
+        client = Client()
+        client.force_login(self.manager)
+        response = client.post(reverse('withdrawal_request_complete', args=[wr.pk]), {'action': 'complete'})
+        self.assertEqual(response.status_code, 302)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.PENDING)
+
+    def test_view_rejects_disallowed_receipt_extension(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.PHONE_TRANSFER, requisite='+7900')
+        bad_file = SimpleUploadedFile('receipt.exe', b'not-a-receipt', content_type='application/octet-stream')
+        client = Client()
+        client.force_login(self.manager)
+        response = client.post(
+            reverse('withdrawal_request_complete', args=[wr.pk]), {'action': 'complete', 'receipt': bad_file},
+        )
+        self.assertEqual(response.status_code, 302)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.PENDING)
+
+    def test_view_completes_transfer_with_valid_receipt(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.PHONE_TRANSFER, requisite='+7900')
+        receipt = SimpleUploadedFile('receipt.png', b'fake-receipt-bytes', content_type='image/png')
+        client = Client()
+        client.force_login(self.manager)
+        response = client.post(
+            reverse('withdrawal_request_complete', args=[wr.pk]), {'action': 'complete', 'receipt': receipt},
+        )
+        self.assertEqual(response.status_code, 302)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.COMPLETED)
+        self.assertTrue(wr.receipt)
+
+    def test_manager_can_still_cancel_transfer_request_without_receipt(self):
+        wr = create_withdrawal_request(self.collector, method=WithdrawalRequest.Method.CARD_TRANSFER, requisite='1234')
+        client = Client()
+        client.force_login(self.manager)
+        response = client.post(
+            reverse('withdrawal_request_complete', args=[wr.pk]), {'action': 'cancel', 'reason': 'Ошибка'},
+        )
+        self.assertEqual(response.status_code, 302)
+        wr.refresh_from_db()
+        self.assertEqual(wr.status, WithdrawalRequest.Status.CANCELLED)

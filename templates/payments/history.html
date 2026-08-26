@@ -72,6 +72,7 @@
         <span class="status-pill {{ wr.status|status_class }}">{{ wr.get_status_display }}</span>
         <span class="small">{{ wr.amount }} ₽, {{ wr.get_method_display }}</span>
         <span class="text-muted small">{{ wr.completed_at|default:wr.created_at }}</span>
+        {% if wr.receipt %}<a href="{{ wr.receipt.url }}" target="_blank" class="small">Чек</a>{% endif %}
     </div>
 {% endfor %}
 {% endif %}

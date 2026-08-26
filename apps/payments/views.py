@@ -8,7 +8,7 @@ from django.views.generic import ListView
 from apps.core.mixins import RoleRequiredMixin
 from apps.orders.models import Order
 
-from .forms import RatingForm, WithdrawalRequestForm
+from .forms import RatingForm, WithdrawalReceiptForm, WithdrawalRequestForm
 from .models import PaymentRecord, WithdrawalRequest
 from .services import (
     WithdrawalRequestError,
@@ -141,7 +141,13 @@ class WithdrawalRequestCompleteView(ManagerRequiredMixin, View):
         action = request.POST.get('action')
         try:
             if action == 'complete':
-                complete_withdrawal_request(request_obj, request.user)
+                receipt_form = WithdrawalReceiptForm(request.POST, request.FILES)
+                if not receipt_form.is_valid():
+                    messages.error(request, 'Не удалось прикрепить чек — проверьте файл (jpg/png/pdf, до 8 МБ).')
+                    return redirect('withdrawal_requests_list')
+                complete_withdrawal_request(
+                    request_obj, request.user, receipt=receipt_form.cleaned_data.get('receipt'),
+                )
                 messages.success(request, 'Выплата отмечена как произведённая.')
             else:
                 cancel_withdrawal_request(request_obj, request.user, reason=request.POST.get('reason', ''))

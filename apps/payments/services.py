@@ -98,15 +98,23 @@ def create_withdrawal_request(collector, method: str, requisite: str = '', comme
 
 
 @transaction.atomic
-def complete_withdrawal_request(request_obj: WithdrawalRequest, manager):
+def complete_withdrawal_request(request_obj: WithdrawalRequest, manager, receipt=None):
+    """receipt: файл чека/квитанции — обязателен для перевода (card_transfer/phone_transfer),
+    для in_person не требуется (деньги передаются лично, чека не существует)."""
     if request_obj.status != WithdrawalRequest.Status.PENDING:
         raise WithdrawalRequestError('Эта заявка уже обработана.')
+
+    requires_receipt = request_obj.method != WithdrawalRequest.Method.IN_PERSON
+    if requires_receipt and receipt is None and not request_obj.receipt:
+        raise WithdrawalRequestError('Для выплаты переводом нужно прикрепить чек или квитанцию.')
 
     for record in request_obj.payment_records.all():
         record.is_paid = True
         record.paid_at = timezone.now()
         record.save(update_fields=['is_paid', 'paid_at', 'updated_at'])
 
+    if receipt is not None:
+        request_obj.receipt = receipt
     request_obj.status = WithdrawalRequest.Status.COMPLETED
     request_obj.handled_by = manager
     request_obj.completed_at = timezone.now()

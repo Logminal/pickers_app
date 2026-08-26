@@ -155,6 +155,12 @@ VAPID_CLAIM_EMAIL = os.getenv('VAPID_CLAIM_EMAIL', '')
 # временное, обсудить с заказчиком и вынести в справочник/настройки компании при необходимости.
 MAX_ACTIVE_BOOKINGS_PER_COLLECTOR = int(os.getenv('MAX_ACTIVE_BOOKINGS_PER_COLLECTOR', '2'))
 
+# Сжатие видеоотчётов через ffmpeg (см. apps/reports/video.py) — уходит в отдельный
+# поток по тому же принципу, что и NOTIFY_ASYNC (см. пояснение в apps/notifications/services.py),
+# чтобы не тормозить ответ пользователю. В тестах отключается через override_settings.
+VIDEO_COMPRESSION_ASYNC = True
+FFMPEG_BINARY = os.getenv('FFMPEG_BINARY', 'ffmpeg')
+
 # Ключ шифрования сканов паспорта (152-ФЗ, п.2.3 ТЗ) — см. apps/collectors/storage.py.
 # В .env ОБЯЗАТЕЛЬНО задать свой PASSPORT_ENCRYPTION_KEY в проде (Fernet.generate_key()).
 # Фолбэк ниже выводится из SECRET_KEY только чтобы dev-окружение работало "из коробки" —
