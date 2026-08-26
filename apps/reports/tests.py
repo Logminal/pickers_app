@@ -353,6 +353,48 @@ class VideoReportTests(TestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
 
+    def test_form_rejects_oversized_photo(self):
+        from .forms import MAX_PHOTO_SIZE_MB, SlotPhotoForm
+
+        oversized = self._fake_image('slot.png')
+        oversized.size = (MAX_PHOTO_SIZE_MB + 1) * 1024 * 1024
+        act_photo = self._fake_image('act.png')
+        form = SlotPhotoForm(
+            slots=[self.slot],
+            data={'checklist': []},
+            files={f'slot_{self.slot.id}': oversized, 'act_photo': act_photo},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn(f'slot_{self.slot.id}', form.errors)
+
+    def test_form_rejects_oversized_video(self):
+        from .forms import MAX_VIDEO_SIZE_MB, SlotPhotoForm
+
+        photo = self._fake_image('slot.png')
+        act_photo = self._fake_image('act.png')
+        oversized_video = SimpleUploadedFile('clip.mp4', b'fake-video-bytes', content_type='video/mp4')
+        oversized_video.size = (MAX_VIDEO_SIZE_MB + 1) * 1024 * 1024
+        form = SlotPhotoForm(
+            slots=[self.slot],
+            data={'checklist': []},
+            files={f'slot_{self.slot.id}': photo, 'act_photo': act_photo, 'video': oversized_video},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn('video', form.errors)
+
+    def test_form_accepts_video_within_size_limit(self):
+        from .forms import SlotPhotoForm
+
+        photo = self._fake_image('slot.png')
+        act_photo = self._fake_image('act.png')
+        video = SimpleUploadedFile('clip.mp4', b'fake-video-bytes', content_type='video/mp4')
+        form = SlotPhotoForm(
+            slots=[self.slot],
+            data={'checklist': []},
+            files={f'slot_{self.slot.id}': photo, 'act_photo': act_photo, 'video': video},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
     def test_review_page_shows_uploaded_video(self):
         photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
         video = SimpleUploadedFile('clip.mp4', b'fake-video-bytes', content_type='video/mp4')

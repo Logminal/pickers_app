@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 
 from .models import VIDEO_EXTENSIONS, ChecklistItem, PhotoReport
@@ -10,6 +11,21 @@ DEFAULT_CHECKLIST = [
     'Мебель выровнена, устойчива',
     'Место убрано от мусора/упаковки',
 ]
+
+# Ограничения на загружаемые файлы (п. «не могли всякую хрень загружать») —
+# помимо проверки типа/расширения, ограничиваем и размер.
+MAX_PHOTO_SIZE_MB = 8
+MAX_VIDEO_SIZE_MB = 150
+
+
+def _validate_max_size(max_mb):
+    max_bytes = max_mb * 1024 * 1024
+
+    def validator(uploaded_file):
+        if uploaded_file.size > max_bytes:
+            raise ValidationError(f'Файл слишком большой — максимум {max_mb} МБ.')
+
+    return validator
 
 
 class PhotoReportCommentForm(forms.ModelForm):
@@ -28,13 +44,17 @@ class SlotPhotoForm(forms.Form):
     # снимок не годится) на странице проверки отчёта.
     act_photo = forms.ImageField(
         label='Акт приёма-передачи (фото подписанного бланка)',
+        validators=[_validate_max_size(MAX_PHOTO_SIZE_MB)],
         widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
     )
     # Необязательное видео в дополнение к фотоотчёту — например, короткий обзор
     # объекта целиком, который неудобно передать отдельными фото по слотам.
     video = forms.FileField(
         label='Видеоотчёт (необязательно)', required=False,
-        validators=[FileExtensionValidator(allowed_extensions=VIDEO_EXTENSIONS)],
+        validators=[
+            FileExtensionValidator(allowed_extensions=VIDEO_EXTENSIONS),
+            _validate_max_size(MAX_VIDEO_SIZE_MB),
+        ],
         widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
     )
 
@@ -43,6 +63,7 @@ class SlotPhotoForm(forms.Form):
         for slot in slots:
             self.fields[f'slot_{slot.id}'] = forms.ImageField(
                 label=slot.title, required=slot.is_required,
+                validators=[_validate_max_size(MAX_PHOTO_SIZE_MB)],
                 widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
             )
         # act_photo/video должны быть в форме последними полями визуально — раз

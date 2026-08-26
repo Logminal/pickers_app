@@ -41,7 +41,7 @@
                     <label for="{{ field.id_for_label }}" class="photo-slot-thumb"><span class="photo-slot-thumb-icon">＋</span></label>
                     <div class="photo-slot-body">
                         <div class="photo-slot-label">{{ field.label }}{% if field.field.required %}<span class="photo-slot-star"> *</span>{% endif %}</div>
-                        <div class="photo-slot-hint">Нажмите, чтобы прикрепить фото</div>
+                        <div class="photo-slot-hint">Нажмите, чтобы прикрепить фото (до 8 МБ)</div>
                     </div>
                     <label for="{{ field.id_for_label }}" class="photo-slot-btn">Загрузить</label>
                     {{ field }}
@@ -56,7 +56,7 @@
 
     <div class="content-card" id="act-card">
         <div class="section-title">📝 Акт приёма-передачи<span class="photo-slot-star"> *</span></div>
-        <p class="text-muted small mb-0 mt-1">Распечатанный бланк подпишите у клиента и сфотографируйте целиком — подпись и дата должны быть читаемы.</p>
+        <p class="text-muted small mb-0 mt-1">Распечатанный бланк подпишите у клиента и сфотографируйте целиком — подпись и дата должны быть читаемы. Файл до 8 МБ.</p>
         <label for="{{ form.act_photo.id_for_label }}" class="act-upload-btn" id="act-upload-btn">📎 Загрузить фото акта</label>
         {{ form.act_photo }}
         {% for error in form.act_photo.errors %}
@@ -66,7 +66,7 @@
 
     <div class="content-card" id="video-card">
         <div class="section-title">🎥 Видеоотчёт</div>
-        <p class="text-muted small mb-0 mt-1">Необязательно — короткий обзор объекта целиком, если фото по слотам недостаточно.</p>
+        <p class="text-muted small mb-0 mt-1">Необязательно — короткий обзор объекта целиком, если фото по слотам недостаточно. Форматы: MP4, MOV, WEBM, до 150 МБ.</p>
         <label for="{{ form.video.id_for_label }}" class="act-upload-btn" id="video-upload-btn">🎥 Загрузить видео</label>
         {{ form.video }}
         {% for error in form.video.errors %}
