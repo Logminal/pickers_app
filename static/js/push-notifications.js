@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
         statusEl.textContent = 'Этот браузер не поддерживает push-уведомления.';
         return;
     }
-    if (!vapidKey) {
+    if (btn.dataset.action === 'enable' && !vapidKey) {
         btn.disabled = true;
         statusEl.textContent = 'Push пока не настроен администратором.';
         return;
