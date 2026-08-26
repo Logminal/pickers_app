@@ -153,7 +153,7 @@ VAPID_CLAIM_EMAIL = os.getenv('VAPID_CLAIM_EMAIL', '')
 # Открытый вопрос №3 из ТЗ: лимит одновременно забронированных заявок у одного
 # сборщика, чтобы не набирал больше, чем может выполнить. Значение по умолчанию —
 # временное, обсудить с заказчиком и вынести в справочник/настройки компании при необходимости.
-MAX_ACTIVE_BOOKINGS_PER_COLLECTOR = int(os.getenv('MAX_ACTIVE_BOOKINGS_PER_COLLECTOR', '3'))
+MAX_ACTIVE_BOOKINGS_PER_COLLECTOR = int(os.getenv('MAX_ACTIVE_BOOKINGS_PER_COLLECTOR', '2'))
 
 # Ключ шифрования сканов паспорта (152-ФЗ, п.2.3 ТЗ) — см. apps/collectors/storage.py.
 # В .env ОБЯЗАТЕЛЬНО задать свой PASSPORT_ENCRYPTION_KEY в проде (Fernet.generate_key()).

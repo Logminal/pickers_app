@@ -98,6 +98,38 @@ class OrderBookingTests(TestCase):
         with self.assertRaises(OrderBookingError):
             confirm_booking(order.pk, self.manager)
 
+    def test_permanently_blocked_collector_cannot_book(self):
+        collector = self._make_collector('col_blocked')
+        collector.collector_profile.status = CollectorProfile.Status.BLOCKED
+        collector.collector_profile.save(update_fields=['status'])
+        order = self._make_order()
+
+        with self.assertRaises(OrderBookingError):
+            book_order(order.pk, collector)
+        order.refresh_from_db()
+        self.assertIsNone(order.collector)
+
+    def test_temporarily_blocked_collector_cannot_book(self):
+        collector = self._make_collector('col_temp_blocked')
+        collector.collector_profile.blocked_until = timezone.now() + datetime.timedelta(days=1)
+        collector.collector_profile.save(update_fields=['blocked_until'])
+        order = self._make_order()
+
+        with self.assertRaises(OrderBookingError):
+            book_order(order.pk, collector)
+        order.refresh_from_db()
+        self.assertIsNone(order.collector)
+
+    def test_collector_can_book_again_after_temporary_block_expires(self):
+        collector = self._make_collector('col_expired_block')
+        collector.collector_profile.blocked_until = timezone.now() - datetime.timedelta(days=1)
+        collector.collector_profile.save(update_fields=['blocked_until'])
+        order = self._make_order()
+
+        book_order(order.pk, collector)
+        order.refresh_from_db()
+        self.assertEqual(order.collector, collector)
+
     def test_confirm_booking_success(self):
         collector = self._make_collector('col1')
         order = self._make_order()

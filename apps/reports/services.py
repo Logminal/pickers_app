@@ -11,18 +11,21 @@ from .models import Act, AdditionalWork, ChecklistItem, Photo, PhotoReport
 @transaction.atomic
 def submit_photo_report(
     order: Order, collector, slot_files: dict, checked_items: list, comment: str,
-    additional_works: list | None = None, act_photo=None,
+    additional_works: list | None = None, act_photo=None, video=None,
 ):
     """slot_files: {slot_id: UploadedFile}, checked_items: список отмеченных пунктов чек-листа.
     additional_works: [{'description': str, 'price': Decimal}, ...] — доп. работы сверх заявки.
     act_photo: фото подписанного акта приёма-передачи со стороны сборщика (п.4 ТЗ) —
     менеджер отдельно подтверждает его читаемость перед закрытием заявки.
+    video: необязательный видеоотчёт — один файл на весь отчёт (не по слотам).
     """
 
     report, _ = PhotoReport.objects.get_or_create(order=order)
     report.comment = comment
     report.status = PhotoReport.Status.SUBMITTED
     report.submitted_at = timezone.now()
+    if video is not None:
+        report.video = video
     report.save()
 
     report.photos.all().delete()

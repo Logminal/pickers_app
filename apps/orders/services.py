@@ -32,6 +32,12 @@ def book_order(order_id, collector):
     if order.status != Order.Status.PUBLISHED:
         raise OrderBookingError('Заявка уже забронирована или недоступна')
 
+    profile = getattr(collector, 'collector_profile', None)
+    if profile and profile.is_blocked:
+        if profile.blocked_until and profile.status != profile.Status.BLOCKED:
+            raise OrderBookingError(f'Вы заблокированы до {profile.blocked_until:%d.%m.%Y %H:%M} — новые заявки брать нельзя.')
+        raise OrderBookingError('Ваш аккаунт заблокирован — новые заявки брать нельзя.')
+
     active_count = Order.objects.filter(collector=collector, status__in=ACTIVE_BOOKING_STATUSES).count()
     if active_count >= settings.MAX_ACTIVE_BOOKINGS_PER_COLLECTOR:
         raise OrderBookingError(

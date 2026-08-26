@@ -1,12 +1,24 @@
+import datetime
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.dictionaries.models import Region
 
 from .models import CollectorNote, CollectorProfile, CollectorProfileChangeRequest, PassportData, PaymentDetails
-from .services import approve_change_request, reject_change_request, submit_profile_change_request
+from .services import (
+    approve_change_request,
+    block_collector,
+    delete_collector_permanently,
+    reject_change_request,
+    set_rating_override,
+    submit_profile_change_request,
+    unblock_collector,
+)
 
 User = get_user_model()
 
@@ -224,3 +236,237 @@ class ReviewsDisplayTests(TestCase):
         self.assertEqual(len(response.context['reviews']), 1)
         self.assertEqual(len(response.context['ratings']), 2)
         self.assertContains(response, 'Отличная работа')
+
+
+class BlockingAndRatingOverrideModelTests(TestCase):
+    """CollectorProfile.is_blocked/average_rating — правила, от которых зависит book_order."""
+
+    def setUp(self):
+        self.collector = User.objects.create_user(username='collector', password='x', role=User.Role.COLLECTOR)
+        self.profile = CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+
+    def test_not_blocked_by_default(self):
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_permanent_block_via_status(self):
+        self.profile.status = CollectorProfile.Status.BLOCKED
+        self.profile.save()
+        self.assertTrue(self.profile.is_blocked)
+
+    def test_future_blocked_until_is_blocked(self):
+        self.profile.blocked_until = timezone.now() + datetime.timedelta(days=1)
+        self.profile.save()
+        self.assertTrue(self.profile.is_blocked)
+
+    def test_past_blocked_until_is_not_blocked(self):
+        self.profile.blocked_until = timezone.now() - datetime.timedelta(days=1)
+        self.profile.save()
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_rating_override_takes_priority_over_computed_average(self):
+        from apps.dictionaries.models import FurnitureType
+        from apps.orders.models import Order
+        from apps.payments.models import Rating
+
+        manager = User.objects.create_user(username='manager_ro', password='x', role=User.Role.MANAGER)
+        ft = FurnitureType.objects.create(name='Кухня')
+        order = Order.objects.create(
+            furniture_type=ft, address='ул. А, 1', scheduled_at=timezone.now(), deadline_at=timezone.now(),
+            price=1000, status=Order.Status.CLOSED, created_by=manager, collector=self.collector,
+        )
+        Rating.objects.create(order=order, collector=self.collector, rated_by=manager, score=3, comment='')
+        self.assertEqual(self.profile.average_rating, 3)
+
+        self.profile.rating_override = Decimal('4.5')
+        self.profile.save()
+        self.assertEqual(self.profile.average_rating, Decimal('4.5'))
+
+    def test_average_rating_none_without_ratings_or_override(self):
+        self.assertIsNone(self.profile.average_rating)
+
+
+class BlockingServiceTests(TestCase):
+    def setUp(self):
+        self.collector = User.objects.create_user(username='collector', password='x', role=User.Role.COLLECTOR)
+        self.profile = CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+
+    def test_block_collector_permanently(self):
+        block_collector(self.profile, reason='Пропал')
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.status, CollectorProfile.Status.BLOCKED)
+        self.assertIsNone(self.profile.blocked_until)
+        self.assertEqual(self.profile.block_reason, 'Пропал')
+
+    def test_block_collector_temporarily_keeps_status_confirmed(self):
+        until = timezone.now() + datetime.timedelta(days=3)
+        block_collector(self.profile, reason='Жалоба клиента', until=until)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.status, CollectorProfile.Status.CONFIRMED)
+        self.assertEqual(self.profile.blocked_until, until)
+        self.assertTrue(self.profile.is_blocked)
+
+    def test_unblock_after_permanent_block_restores_confirmed(self):
+        block_collector(self.profile)
+        unblock_collector(self.profile)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.status, CollectorProfile.Status.CONFIRMED)
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_unblock_clears_temporary_block(self):
+        block_collector(self.profile, until=timezone.now() + datetime.timedelta(days=1))
+        unblock_collector(self.profile)
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.blocked_until)
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_set_rating_override(self):
+        set_rating_override(self.profile, Decimal('2.5'))
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.rating_override, Decimal('2.5'))
+
+    def test_clear_rating_override(self):
+        set_rating_override(self.profile, Decimal('2.5'))
+        set_rating_override(self.profile, None)
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.rating_override)
+
+    def test_delete_collector_permanently_removes_user_and_profile(self):
+        user_id = self.collector.pk
+        delete_collector_permanently(self.profile)
+        self.assertFalse(User.objects.filter(pk=user_id).exists())
+        self.assertFalse(CollectorProfile.objects.filter(pk=self.profile.pk).exists())
+
+    def test_delete_collector_preserves_order_history_via_null(self):
+        from apps.dictionaries.models import FurnitureType
+        from apps.orders.models import Order
+
+        manager = User.objects.create_user(username='manager_del', password='x', role=User.Role.MANAGER)
+        ft = FurnitureType.objects.create(name='Кухня')
+        order = Order.objects.create(
+            furniture_type=ft, address='ул. А, 1', scheduled_at=timezone.now(), deadline_at=timezone.now(),
+            price=1000, status=Order.Status.CLOSED, created_by=manager, collector=self.collector,
+        )
+        delete_collector_permanently(self.profile)
+        order.refresh_from_db()
+        self.assertIsNone(order.collector)
+
+
+class AdminBlockingViewsTests(TestCase):
+    """Управление аккаунтом сборщика доступно только роли 'Администратор' (не менеджеру)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(username='admin_block', password='x', role=User.Role.ADMIN)
+        self.manager = User.objects.create_user(username='manager_block', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector_block', password='x', role=User.Role.COLLECTOR)
+        self.profile = CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+
+    def test_manager_cannot_block(self):
+        client = Client()
+        client.force_login(self.manager)
+        response = client.post(reverse('collector_block', args=[self.collector.pk]), {'reason': 'Тест'})
+        self.assertEqual(response.status_code, 403)
+        self.profile.refresh_from_db()
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_admin_permanent_block(self):
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(reverse('collector_block', args=[self.collector.pk]), {'reason': 'Пропал'})
+        self.assertEqual(response.status_code, 302)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.status, CollectorProfile.Status.BLOCKED)
+
+    def test_admin_temporary_block_with_valid_future_date(self):
+        until = timezone.now() + datetime.timedelta(days=2)
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(reverse('collector_block', args=[self.collector.pk]), {
+            'reason': 'Жалоба', 'blocked_until': until.isoformat(),
+        })
+        self.assertEqual(response.status_code, 302)
+        self.profile.refresh_from_db()
+        self.assertTrue(self.profile.is_blocked)
+        self.assertEqual(self.profile.status, CollectorProfile.Status.CONFIRMED)
+
+    def test_admin_block_rejects_past_date(self):
+        past = timezone.now() - datetime.timedelta(days=1)
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('collector_block', args=[self.collector.pk]), {
+            'reason': 'Жалоба', 'blocked_until': past.isoformat(),
+        })
+        self.profile.refresh_from_db()
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_admin_block_rejects_garbage_date(self):
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('collector_block', args=[self.collector.pk]), {
+            'reason': 'Жалоба', 'blocked_until': 'not-a-date',
+        })
+        self.profile.refresh_from_db()
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_admin_unblock(self):
+        block_collector(self.profile)
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(reverse('collector_unblock', args=[self.collector.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.profile.refresh_from_db()
+        self.assertFalse(self.profile.is_blocked)
+
+    def test_admin_sets_rating_override(self):
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(
+            reverse('collector_rating_override', args=[self.collector.pk]), {'rating_override': '3.5'},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.rating_override, Decimal('3.5'))
+
+    def test_admin_clears_rating_override_with_empty_value(self):
+        set_rating_override(self.profile, Decimal('4'))
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('collector_rating_override', args=[self.collector.pk]), {'rating_override': ''})
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.rating_override)
+
+    def test_admin_rating_override_rejects_out_of_range(self):
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('collector_rating_override', args=[self.collector.pk]), {'rating_override': '9'})
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.rating_override)
+
+    def test_admin_rating_override_rejects_non_numeric(self):
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('collector_rating_override', args=[self.collector.pk]), {'rating_override': 'abc'})
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.rating_override)
+
+    def test_manager_cannot_delete_collector(self):
+        client = Client()
+        client.force_login(self.manager)
+        response = client.post(reverse('collector_delete', args=[self.collector.pk]))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(User.objects.filter(pk=self.collector.pk).exists())
+
+    def test_admin_deletes_collector(self):
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(reverse('collector_delete', args=[self.collector.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(pk=self.collector.pk).exists())

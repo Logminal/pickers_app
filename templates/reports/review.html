@@ -30,6 +30,13 @@
     </div>
 </div>
 
+{% if report.video %}
+<div class="content-card">
+    <div class="section-title">🎥 Видеоотчёт</div>
+    <video src="{{ report.video.url }}" controls preload="metadata" class="review-video mt-2"></video>
+</div>
+{% endif %}
+
 <div class="content-card">
     <div class="section-title-row">
         <span class="section-title">✅ Чек-лист сборщика</span>

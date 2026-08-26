@@ -1,7 +1,10 @@
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
 
 from apps.core.models import TimeStampedModel
+
+VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm']
 
 
 class PhotoSlotTemplate(models.Model):
@@ -52,6 +55,10 @@ class PhotoReport(TimeStampedModel):
     submitted_at = models.DateTimeField('Дата загрузки', null=True, blank=True)
     geolocation_lat = models.DecimalField('Широта', max_digits=9, decimal_places=6, null=True, blank=True)
     geolocation_lng = models.DecimalField('Долгота', max_digits=9, decimal_places=6, null=True, blank=True)
+    video = models.FileField(
+        'Видеоотчёт', upload_to='reports/videos/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=VIDEO_EXTENSIONS)],
+    )
 
     class Meta:
         verbose_name = 'Фотоотчёт'

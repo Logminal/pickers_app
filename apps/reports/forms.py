@@ -1,6 +1,7 @@
 from django import forms
+from django.core.validators import FileExtensionValidator
 
-from .models import ChecklistItem, PhotoReport
+from .models import VIDEO_EXTENSIONS, ChecklistItem, PhotoReport
 
 DEFAULT_CHECKLIST = [
     'Все модули собраны согласно схеме',
@@ -29,6 +30,13 @@ class SlotPhotoForm(forms.Form):
         label='Акт приёма-передачи (фото подписанного бланка)',
         widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
     )
+    # Необязательное видео в дополнение к фотоотчёту — например, короткий обзор
+    # объекта целиком, который неудобно передать отдельными фото по слотам.
+    video = forms.FileField(
+        label='Видеоотчёт (необязательно)', required=False,
+        validators=[FileExtensionValidator(allowed_extensions=VIDEO_EXTENSIONS)],
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+    )
 
     def __init__(self, slots, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -37,9 +45,9 @@ class SlotPhotoForm(forms.Form):
                 label=slot.title, required=slot.is_required,
                 widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
             )
-        # act_photo должно быть в форме последним полем визуально — раз добавлено
-        # в Meta класса раньше динамических слотов, переносим порядок явно.
-        self.order_fields(list(self.fields.keys())[1:] + ['act_photo'])
+        # act_photo/video должны быть в форме последними полями визуально — раз
+        # добавлены в Meta класса раньше динамических слотов, переносим порядок явно.
+        self.order_fields(list(self.fields.keys())[2:] + ['act_photo', 'video'])
 
 
 # Доп. работы, обнаруженные на объекте сверх заявки (по образцу «Руки») —

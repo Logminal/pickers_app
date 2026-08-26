@@ -78,6 +78,7 @@ class PhotoReportUploadView(LoginRequiredMixin, View):
             order=order, collector=request.user, slot_files=slot_files,
             checked_items=checked_items, comment=request.POST.get('comment', ''),
             additional_works=additional_works, act_photo=form.cleaned_data['act_photo'],
+            video=form.cleaned_data.get('video'),
         )
         messages.success(request, 'Фотоотчёт и акт приёма-передачи отправлены менеджеру на проверку.')
         return redirect('order_detail', pk=order.pk)

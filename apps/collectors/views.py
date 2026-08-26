@@ -1,10 +1,13 @@
 import mimetypes
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views import View
 from django.views.generic import DetailView, ListView
 
@@ -14,7 +17,15 @@ from apps.payments.models import Rating
 
 from .forms import CHANGE_FIELD_LABELS, CollectorNoteForm, CollectorRegistrationForm, ProfileEditForm
 from .models import CollectorNote, CollectorProfile, CollectorProfileChangeRequest, PaymentDetails
-from .services import approve_change_request, reject_change_request, submit_profile_change_request
+from .services import (
+    approve_change_request,
+    block_collector,
+    delete_collector_permanently,
+    reject_change_request,
+    set_rating_override,
+    submit_profile_change_request,
+    unblock_collector,
+)
 
 User = get_user_model()
 
@@ -124,6 +135,84 @@ class PassportScanView(AdminOnlyRequiredMixin, View):
         response = HttpResponse(decrypted, content_type=content_type or 'application/octet-stream')
         response['Content-Disposition'] = f'inline; filename="passport_{profile.pk}"'
         return response
+
+
+class CollectorBlockView(AdminOnlyRequiredMixin, View):
+    """Блокировка сборщика — либо навсегда, либо до конкретной даты (blocked_until пусто/задано)."""
+
+    def post(self, request, user_id):
+        user = get_object_or_404(User, pk=user_id)
+        profile = get_object_or_404(CollectorProfile, user=user)
+        reason = request.POST.get('reason', '').strip()
+        until_raw = request.POST.get('blocked_until', '').strip()
+
+        until = None
+        if until_raw:
+            until = parse_datetime(until_raw)
+            if until is not None and timezone.is_naive(until):
+                until = timezone.make_aware(until)
+            if until is None:
+                messages.error(request, 'Некорректная дата окончания блокировки.')
+                return redirect('collector_profile_detail', user_id=user_id)
+            if until <= timezone.now():
+                messages.error(request, 'Дата окончания блокировки должна быть в будущем.')
+                return redirect('collector_profile_detail', user_id=user_id)
+
+        block_collector(profile, reason=reason, until=until)
+        if until:
+            messages.success(request, f'Сборщик заблокирован до {until:%d.%m.%Y %H:%M}.')
+        else:
+            messages.success(request, 'Сборщик заблокирован бессрочно.')
+        return redirect('collector_profile_detail', user_id=user_id)
+
+
+class CollectorUnblockView(AdminOnlyRequiredMixin, View):
+    def post(self, request, user_id):
+        user = get_object_or_404(User, pk=user_id)
+        profile = get_object_or_404(CollectorProfile, user=user)
+        unblock_collector(profile)
+        messages.success(request, 'Блокировка снята.')
+        return redirect('collector_profile_detail', user_id=user_id)
+
+
+class CollectorRatingOverrideView(AdminOnlyRequiredMixin, View):
+    """Ручная корректировка итогового рейтинга — пустое значение снимает корректировку."""
+
+    def post(self, request, user_id):
+        user = get_object_or_404(User, pk=user_id)
+        profile = get_object_or_404(CollectorProfile, user=user)
+        raw = request.POST.get('rating_override', '').strip()
+
+        if not raw:
+            set_rating_override(profile, None)
+            messages.success(request, 'Ручная корректировка рейтинга снята.')
+            return redirect('collector_profile_detail', user_id=user_id)
+
+        try:
+            value = Decimal(raw.replace(',', '.'))
+        except InvalidOperation:
+            messages.error(request, 'Рейтинг должен быть числом от 0 до 5.')
+            return redirect('collector_profile_detail', user_id=user_id)
+
+        if not (Decimal('0') <= value <= Decimal('5')):
+            messages.error(request, 'Рейтинг должен быть от 0 до 5.')
+            return redirect('collector_profile_detail', user_id=user_id)
+
+        set_rating_override(profile, value)
+        messages.success(request, f'Рейтинг вручную установлен: {value}.')
+        return redirect('collector_profile_detail', user_id=user_id)
+
+
+class CollectorDeleteView(AdminOnlyRequiredMixin, View):
+    """Полное безвозвратное удаление аккаунта сборщика (не путать с блокировкой)."""
+
+    def post(self, request, user_id):
+        user = get_object_or_404(User, pk=user_id)
+        profile = get_object_or_404(CollectorProfile, user=user)
+        name = profile.full_name
+        delete_collector_permanently(profile)
+        messages.success(request, f'Сборщик «{name}» удалён безвозвратно.')
+        return redirect('manager_order_list')
 
 
 class MyProfileView(LoginRequiredMixin, View):

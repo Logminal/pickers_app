@@ -1,5 +1,9 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
@@ -57,6 +61,18 @@ class CollectorProfile(TimeStampedModel):
     personal_data_consent_given_at = models.DateTimeField('Согласие на ПДн дано', null=True, blank=True)
     personal_data_consent_ip = models.GenericIPAddressField('IP при согласии на ПДн', null=True, blank=True)
 
+    # Временная блокировка — заявки брать нельзя, пока не истечёт срок (см. is_blocked).
+    # Постоянная блокировка по-прежнему выражается через status=BLOCKED (см. services.block_collector).
+    blocked_until = models.DateTimeField('Заблокирован до', null=True, blank=True)
+    block_reason = models.TextField('Причина блокировки', blank=True)
+
+    # Ручная корректировка итогового рейтинга администратором — если задана,
+    # полностью подменяет собой average_rating (не усредняется с ним).
+    rating_override = models.DecimalField(
+        'Ручная корректировка рейтинга', max_digits=3, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('5'))],
+    )
+
     class Meta:
         verbose_name = 'Анкета сборщика'
         verbose_name_plural = 'Анкеты сборщиков'
@@ -66,7 +82,12 @@ class CollectorProfile(TimeStampedModel):
 
     @property
     def average_rating(self):
-        """Средний рейтинг по оценкам менеджера (п.5 ТЗ). None, если оценок ещё нет."""
+        """Средний рейтинг по оценкам менеджера (п.5 ТЗ), если только не задана
+        ручная корректировка администратором (rating_override) — тогда она в приоритете.
+        None, если оценок ещё нет и корректировка не задана."""
+        if self.rating_override is not None:
+            return self.rating_override
+
         from django.db.models import Avg
 
         from apps.payments.models import Rating
@@ -78,6 +99,13 @@ class CollectorProfile(TimeStampedModel):
         from apps.payments.models import Rating
 
         return Rating.objects.filter(collector=self.user).count()
+
+    @property
+    def is_blocked(self):
+        """Заблокирован — постоянно (status=BLOCKED) либо временно (blocked_until в будущем)."""
+        if self.status == self.Status.BLOCKED:
+            return True
+        return bool(self.blocked_until and self.blocked_until > timezone.now())
 
 
 class PassportData(TimeStampedModel):

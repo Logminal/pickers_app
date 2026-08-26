@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const actInput = form.querySelector('input[name="act_photo"]');
     const actCard = document.getElementById('act-card');
     const actBtn = document.getElementById('act-upload-btn');
+    const videoInput = form.querySelector('input[name="video"]');
+    const videoCard = document.getElementById('video-card');
+    const videoBtn = document.getElementById('video-upload-btn');
     const checklistInputs = Array.from(form.querySelectorAll('.checklist-input'));
 
     function slotInput(slot) {
@@ -36,6 +39,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const has = actInput.files && actInput.files.length > 0;
         actCard.classList.toggle('act-card-done', has);
         actBtn.textContent = has ? ('✓ ' + actInput.files[0].name + ' · заменить') : '📎 Загрузить фото акта';
+    }
+
+    // Видео необязательное — не влияет на прогресс/готовность к отправке, только подпись кнопки.
+    function updateVideo() {
+        if (!videoInput) return;
+        const has = videoInput.files && videoInput.files.length > 0;
+        videoCard.classList.toggle('act-card-done', has);
+        videoBtn.textContent = has ? ('✓ ' + videoInput.files[0].name + ' · заменить') : '🎥 Загрузить видео';
     }
 
     function updateProgress() {
@@ -87,6 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (input) input.addEventListener('change', function () { updateSlot(slot); updateProgress(); });
     });
     if (actInput) actInput.addEventListener('change', function () { updateAct(); updateProgress(); });
+    if (videoInput) videoInput.addEventListener('change', updateVideo);
     checklistInputs.forEach(function (c) { c.addEventListener('change', updateProgress); });
 
     function updateExtrasTotal() {
@@ -112,5 +124,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     slots.forEach(updateSlot);
     updateAct();
+    updateVideo();
     updateProgress();
 });

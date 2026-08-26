@@ -7,20 +7,49 @@ from .models import CollectorProfile, CollectorProfileChangeRequest, PaymentDeta
 
 
 @transaction.atomic
-def block_collector(profile: CollectorProfile, reason: str = ''):
-    """Блокировка сборщика (п.3.2 ТЗ) — без возможности откликаться на новые заявки."""
-    profile.status = CollectorProfile.Status.BLOCKED
-    if reason:
-        profile.rejection_reason = reason
-    profile.save(update_fields=['status', 'rejection_reason', 'updated_at'])
+def block_collector(profile: CollectorProfile, reason: str = '', until=None):
+    """Блокировка сборщика (п.3.2 ТЗ) — без возможности откликаться на новые заявки.
+
+    until=None — постоянная блокировка (status=BLOCKED), как и раньше (используется,
+    например, при revoke_booking, когда сборщик пропал). until=datetime — временная,
+    статус анкеты не трогаем (остаётся CONFIRMED), запрет на бронирование идёт через
+    CollectorProfile.is_blocked/blocked_until — по истечении срока разблокировка
+    происходит сама, без отдельного действия.
+    """
+    profile.block_reason = reason
+    if until is not None:
+        profile.blocked_until = until
+        profile.save(update_fields=['blocked_until', 'block_reason', 'updated_at'])
+    else:
+        profile.status = CollectorProfile.Status.BLOCKED
+        profile.blocked_until = None
+        profile.save(update_fields=['status', 'blocked_until', 'block_reason', 'updated_at'])
     return profile
 
 
 @transaction.atomic
 def unblock_collector(profile: CollectorProfile):
-    profile.status = CollectorProfile.Status.CONFIRMED
-    profile.save(update_fields=['status', 'updated_at'])
+    profile.blocked_until = None
+    if profile.status == CollectorProfile.Status.BLOCKED:
+        profile.status = CollectorProfile.Status.CONFIRMED
+    profile.save(update_fields=['status', 'blocked_until', 'updated_at'])
     return profile
+
+
+def set_rating_override(profile: CollectorProfile, value):
+    """value=None снимает корректировку — рейтинг снова считается по оценкам."""
+    profile.rating_override = value
+    profile.save(update_fields=['rating_override', 'updated_at'])
+    return profile
+
+
+def delete_collector_permanently(profile: CollectorProfile):
+    """Полное удаление аккаунта сборщика. История заявок/оценок/выплат сохраняется
+    (эти модели ссылаются на User через SET_NULL — см. Order.collector и т.п.), но
+    сама анкета, паспортные данные, реквизиты и заметки менеджера удаляются безвозвратно
+    вместе с пользователем (CASCADE) — обратимости нет, это не мягкое удаление."""
+    user = profile.user
+    user.delete()
 
 
 def _current_field_values(profile: CollectorProfile, payment: PaymentDetails):

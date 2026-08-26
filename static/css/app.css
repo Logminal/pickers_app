@@ -646,6 +646,13 @@ a:hover { color: var(--brand-dark); }
 .passport-box .btn-action { margin-bottom: 0; }
 .passport-box-note { margin-top: 0.6rem; font-weight: 600; font-size: 0.72rem; line-height: 1.45; color: var(--warning); }
 
+/* Панель админ-действий на профиле сборщика (рейтинг, блокировка, удаление) */
+.admin-controls-block { padding-top: 0.9rem; margin-top: 0.9rem; border-top: 1px solid var(--border); }
+.admin-controls-block:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+.admin-inline-form { margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center; }
+.admin-inline-form input { flex: 1; min-width: 0; }
+.admin-inline-btn { flex: none; width: auto; min-height: 40px; padding: 0 1rem; font-size: 0.8rem; }
+
 .job-list { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .job-card, .review-card, .note-card {
   display: block;
@@ -892,6 +899,7 @@ a.job-card:hover { background: var(--brand-light); }
 .review-photo-item { border: none; background: transparent; padding: 0; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 0.4rem; }
 .review-photo-thumb { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); }
 .review-photo-caption { font-weight: 700; font-size: 0.72rem; color: #4a4340; }
+.review-video { width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #000; max-height: 420px; }
 
 .review-checklist { margin-top: 0.6rem; display: flex; flex-direction: column; }
 .review-checklist-row { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
