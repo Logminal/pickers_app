@@ -1,7 +1,9 @@
 import datetime
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.collectors.models import CollectorProfile
@@ -385,3 +387,44 @@ class BitrixPayoutCalculationTests(TestCase):
 
         self.assertEqual(order.bitrix_assembly_amount, 0)
         self.assertEqual(order.collector_payout_amount, 5000 + 2000)
+
+
+class OrderDetailActTemplateTests(TestCase):
+    """Пустой бланк акта (FurnitureType.act_template_file) — сборщик должен видеть
+    его заранее на странице заявки, чтобы распечатать и заполнить на объекте."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager_tpl', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector_tpl', password='x', role=User.Role.COLLECTOR)
+        CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+
+    def _make_order(self, furniture_type, status=Order.Status.CONFIRMED, collector=None):
+        return Order.objects.create(
+            furniture_type=furniture_type, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=10000,
+            status=status, created_by=self.manager, collector=collector,
+        )
+
+    def test_collector_sees_act_template_when_set(self):
+        ft = FurnitureType.objects.create(
+            name='Кухня с бланком',
+            act_template_file=SimpleUploadedFile('blank.docx', b'template-bytes'),
+        )
+        order = self._make_order(ft, collector=self.collector)
+
+        client = self.client
+        client.force_login(self.collector)
+        response = client.get(reverse('order_detail', args=[order.pk]))
+        self.assertContains(response, 'Бланк акта приёма-передачи')
+
+    def test_no_act_template_block_when_not_set(self):
+        ft = FurnitureType.objects.create(name='Кухня без бланка')
+        order = self._make_order(ft, collector=self.collector)
+
+        client = self.client
+        client.force_login(self.collector)
+        response = client.get(reverse('order_detail', args=[order.pk]))
+        self.assertNotContains(response, 'Бланк акта приёма-передачи')
