@@ -122,9 +122,14 @@ class PassportData(TimeStampedModel):
     registration_address = models.TextField('Адрес регистрации', blank=True)
     actual_address = models.TextField('Адрес фактического проживания', blank=True)
 
-    # Скан шифруется при записи и хранится вне MEDIA_ROOT — см. apps/collectors/storage.py.
+    # Сканы шифруются при записи и хранятся вне MEDIA_ROOT — см. apps/collectors/storage.py.
     # Доступ только через PassportScanView (проверка роли + запись в PersonalDataAccessLog).
-    scan_file = models.FileField('Скан паспорта', upload_to='%Y/%m/', storage=EncryptedPrivateStorage())
+    # Разворот с фото и страница с пропиской — отдельные фото (сборщику неудобно и часто
+    # нечитаемо снимать обе страницы паспорта одним кадром).
+    scan_file = models.FileField('Скан паспорта (разворот с фото)', upload_to='%Y/%m/', storage=EncryptedPrivateStorage())
+    registration_scan_file = models.FileField(
+        'Скан страницы с пропиской', upload_to='%Y/%m/', storage=EncryptedPrivateStorage(), default='',
+    )
 
     class Meta:
         verbose_name = 'Паспортные данные'

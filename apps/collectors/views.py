@@ -112,28 +112,37 @@ def _client_ip(request):
 
 
 class PassportScanView(AdminOnlyRequiredMixin, View):
-    """Отдаёт расшифрованный скан паспорта. Каждое обращение логируется (152-ФЗ, п.2.3 ТЗ)."""
+    """Отдаёт расшифрованный скан паспорта. Каждое обращение логируется (152-ФЗ, п.2.3 ТЗ).
+    doc_type различает разворот с фото ('main') и страницу с пропиской ('registration') —
+    это два отдельных файла, см. PassportData.scan_file/registration_scan_file."""
 
-    def get(self, request, user_id):
+    DOC_FIELDS = {
+        'main': ('scan_file', 'viewed_passport_scan'),
+        'registration': ('registration_scan_file', 'viewed_registration_scan'),
+    }
+
+    def get(self, request, user_id, doc_type='main'):
         user = get_object_or_404(User, pk=user_id)
         profile = get_object_or_404(CollectorProfile, user=user)
 
+        field_name, action = self.DOC_FIELDS.get(doc_type, self.DOC_FIELDS['main'])
         passport = getattr(profile, 'passport', None)
-        if not passport or not passport.scan_file:
-            return HttpResponseNotFound('Скан паспорта не найден')
+        scan = getattr(passport, field_name, None) if passport else None
+        if not scan:
+            return HttpResponseNotFound('Скан не найден')
 
-        decrypted = passport.scan_file.storage.open_decrypted(passport.scan_file.name)
+        decrypted = scan.storage.open_decrypted(scan.name)
 
         PersonalDataAccessLog.objects.create(
             user=request.user,
             target_collector=profile,
-            action='viewed_passport_scan',
+            action=action,
             ip_address=_client_ip(request),
         )
 
-        content_type, _ = mimetypes.guess_type(passport.scan_file.name)
+        content_type, _ = mimetypes.guess_type(scan.name)
         response = HttpResponse(decrypted, content_type=content_type or 'application/octet-stream')
-        response['Content-Disposition'] = f'inline; filename="passport_{profile.pk}"'
+        response['Content-Disposition'] = f'inline; filename="{doc_type}_{profile.pk}"'
         return response
 
 

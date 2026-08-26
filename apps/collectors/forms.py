@@ -22,8 +22,10 @@ class CollectorRegistrationForm(forms.Form):
     birth_date = forms.DateField(label='Дата рождения', widget=forms.DateInput(attrs={'type': 'date'}))
     profile_photo = forms.ImageField(label='Фото профиля (селфи)')
 
-    # Паспортные данные
-    passport_scan = forms.FileField(label='Скан паспорта (разворот + прописка)')
+    # Паспортные данные — два отдельных снимка, чтобы не пытаться уместить обе
+    # страницы паспорта в один нечитаемый кадр.
+    passport_scan = forms.FileField(label='Скан паспорта (разворот с фото)')
+    registration_scan = forms.FileField(label='Скан страницы с пропиской')
 
     # Налоговый статус
     tax_status = forms.ChoiceField(label='Статус', choices=CollectorProfile.TaxStatus.choices)
@@ -112,6 +114,7 @@ class CollectorRegistrationForm(forms.Form):
         PassportData.objects.create(
             collector=collector,
             scan_file=data['passport_scan'],
+            registration_scan_file=data['registration_scan'],
         )
 
         PaymentDetails.objects.create(

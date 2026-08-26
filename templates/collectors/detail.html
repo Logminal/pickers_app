@@ -51,6 +51,10 @@
            onclick="return confirm('Открыть скан паспорта? Доступ к персональным документам логируется: фиксируются ваш ID, время и IP.');">
             🔒 Открыть скан паспорта
         </a>
+        <a href="{% url 'registration_scan_view' profile.user.pk %}" target="_blank" class="btn-action btn-action-primary mt-2"
+           onclick="return confirm('Открыть скан прописки? Доступ к персональным документам логируется: фиксируются ваш ID, время и IP.');">
+            🔒 Открыть скан прописки
+        </a>
         <div class="passport-box-note">Доступ к персональным документам логируется: фиксируются ваш ID, время и IP.</div>
     </div>
     {% endif %}

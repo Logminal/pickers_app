@@ -74,6 +74,108 @@ class PassportEncryptionTests(TestCase):
         self.assertNotEqual(response.status_code, 200)
 
 
+class RegistrationScanTests(TestCase):
+    """Скан разворота паспорта и скан прописки — два отдельных файла (сборщику
+    неудобно фотографировать обе страницы паспорта одним кадром)."""
+
+    def setUp(self):
+        self.collector = User.objects.create_user(username='collector_reg', password='x', role=User.Role.COLLECTOR)
+        self.profile = CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+        )
+        self.main_content = b'MAIN PASSPORT SPREAD'
+        self.registration_content = b'REGISTRATION PAGE'
+        self.passport = PassportData.objects.create(
+            collector=self.profile,
+            scan_file=SimpleUploadedFile('main.txt', self.main_content, content_type='text/plain'),
+            registration_scan_file=SimpleUploadedFile('reg.txt', self.registration_content, content_type='text/plain'),
+        )
+        self.admin = User.objects.create_user(username='admin_reg', password='x', role=User.Role.ADMIN)
+
+    def test_main_and_registration_scans_are_independent_files(self):
+        self.assertNotEqual(self.passport.scan_file.name, self.passport.registration_scan_file.name)
+
+    def test_admin_can_view_registration_scan_and_it_gets_logged(self):
+        from apps.core.models import PersonalDataAccessLog
+
+        client = Client()
+        client.force_login(self.admin)
+        response = client.get(reverse('registration_scan_view', args=[self.collector.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, self.registration_content)
+        self.assertTrue(
+            PersonalDataAccessLog.objects.filter(
+                user=self.admin, target_collector=self.profile, action='viewed_registration_scan',
+            ).exists()
+        )
+
+    def test_registration_scan_view_does_not_serve_main_scan(self):
+        client = Client()
+        client.force_login(self.admin)
+        response = client.get(reverse('registration_scan_view', args=[self.collector.pk]))
+        self.assertNotEqual(response.content, self.main_content)
+
+    def test_manager_cannot_view_registration_scan(self):
+        manager = User.objects.create_user(username='manager_reg', password='x', role=User.Role.MANAGER)
+        client = Client()
+        client.force_login(manager)
+        response = client.get(reverse('registration_scan_view', args=[self.collector.pk]))
+        self.assertEqual(response.status_code, 403)
+
+
+class RegistrationFormScanFieldsTests(TestCase):
+    """Форма регистрации сборщика — оба скана (разворот и прописка) обязательны и
+    сохраняются как два отдельных файла."""
+
+    def _fake_image(self, name):
+        import io
+
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new('RGB', (1, 1)).save(buf, format='PNG')
+        buf.seek(0)
+        return SimpleUploadedFile(name, buf.read(), content_type='image/png')
+
+    def _base_payload(self, **overrides):
+        data = {
+            'username': 'newcollector', 'password': 'x', 'phone': '+7 999 111-22-33',
+            'full_name': 'Тест Тестов', 'birth_date': '1990-01-01',
+            'profile_photo': self._fake_image('selfie.png'),
+            'passport_scan': SimpleUploadedFile('main.jpg', b'main-bytes', content_type='image/jpeg'),
+            'registration_scan': SimpleUploadedFile('reg.jpg', b'reg-bytes', content_type='image/jpeg'),
+            'tax_status': CollectorProfile.TaxStatus.SELF_EMPLOYED,
+            'personal_data_consent': 'on', 'offer_accepted': 'on',
+            'payment_method': PaymentDetails.Method.CARD, 'card_or_account_number': '1234',
+            'experience_years': '0',
+        }
+        data.update(overrides)
+        return data
+
+    def test_registration_requires_registration_scan(self):
+        payload = self._base_payload()
+        del payload['registration_scan']
+        client = Client()
+        response = client.post(reverse('collector_register'), payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username='newcollector').exists())
+
+    def test_registration_saves_both_scans_as_separate_files(self):
+        client = Client()
+        response = client.post(reverse('collector_register'), self._base_payload())
+        self.assertEqual(response.status_code, 302)
+
+        user = User.objects.get(username='newcollector')
+        passport = PassportData.objects.get(collector=user.collector_profile)
+        self.assertNotEqual(passport.scan_file.name, passport.registration_scan_file.name)
+        self.assertEqual(passport.scan_file.storage.open_decrypted(passport.scan_file.name), b'main-bytes')
+        self.assertEqual(
+            passport.registration_scan_file.storage.open_decrypted(passport.registration_scan_file.name),
+            b'reg-bytes',
+        )
+
+
 class ProfileChangeRequestTests(TestCase):
     """Сборщик меняет свои данные сам, но применяются они только после подтверждения."""
 

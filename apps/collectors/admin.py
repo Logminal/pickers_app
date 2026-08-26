@@ -14,15 +14,22 @@ class PassportDataInline(admin.StackedInline):
     extra = 0
     fields = (
         'series_number', 'issued_by', 'issue_date', 'division_code',
-        'registration_address', 'actual_address', 'scan_link', 'created_at', 'updated_at',
+        'registration_address', 'actual_address', 'scan_link', 'registration_scan_link', 'created_at', 'updated_at',
     )
-    readonly_fields = ('scan_link', 'created_at', 'updated_at')
+    readonly_fields = ('scan_link', 'registration_scan_link', 'created_at', 'updated_at')
 
-    @admin.display(description='Скан паспорта')
+    @admin.display(description='Скан паспорта (разворот)')
     def scan_link(self, obj):
         if not obj.pk or not obj.scan_file:
             return '—'
         url = reverse('passport_scan_view', kwargs={'user_id': obj.collector.user_id})
+        return format_html('<a href="{}" target="_blank">🔒 Открыть скан (доступ логируется)</a>', url)
+
+    @admin.display(description='Скан прописки')
+    def registration_scan_link(self, obj):
+        if not obj.pk or not obj.registration_scan_file:
+            return '—'
+        url = reverse('registration_scan_view', kwargs={'user_id': obj.collector.user_id})
         return format_html('<a href="{}" target="_blank">🔒 Открыть скан (доступ логируется)</a>', url)
 
 
