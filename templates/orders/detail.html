@@ -125,8 +125,13 @@
         {% if order.status == 'closed' and order.act %}
             <a href="{{ order.act.file.url }}" class="btn-action btn-action-outline-primary">Скачать акт приёма-передачи</a>
         {% endif %}
-        {% if order.status == 'booked' or order.status == 'report_uploaded' or order.status == 'accepted' %}
+        {% if order.act.manager_act_file %}
+            <a href="{{ order.act.manager_act_file.url }}" class="btn-action btn-action-outline-primary">Скачать акт от менеджера</a>
+        {% endif %}
+        {% if order.status == 'booked' or order.status == 'report_uploaded' %}
             <div class="order-notice">Ожидайте действий менеджера — текущий статус «{{ order.get_status_display }}».</div>
+        {% elif order.status == 'accepted' %}
+            <div class="order-notice">Отчёт принят — заявка будет закрыта менеджером.</div>
         {% endif %}
     {% else %}
         <div class="order-notice order-notice-warning">Заявка уже забронирована другим сборщиком.</div>

@@ -66,7 +66,10 @@ class PhotoReportAndActTests(TestCase):
 
     def test_cannot_close_order_without_act(self):
         self._submit_report()
-        review_photo_report(self.order, self.manager, accepted=True)
+        review_photo_report(
+            self.order, self.manager, accepted=True,
+            manager_act_file=SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf'),
+        )
         self.order.refresh_from_db()
 
         with self.assertRaises(ValueError):
@@ -74,12 +77,17 @@ class PhotoReportAndActTests(TestCase):
 
     def test_cannot_close_order_with_unconfirmed_act_readability(self):
         self._submit_report()
-        review_photo_report(self.order, self.manager, accepted=True)
+        review_photo_report(
+            self.order, self.manager, accepted=True,
+            manager_act_file=SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf'),
+        )
         self.order.refresh_from_db()
 
-        Act.objects.create(
-            order=self.order, file=SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
-            uploaded_by=self.manager, is_readable_confirmed=False,
+        Act.objects.update_or_create(
+            order=self.order, defaults={
+                'file': SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
+                'uploaded_by': self.manager, 'is_readable_confirmed': False,
+            },
         )
 
         with self.assertRaises(ValueError):
@@ -87,12 +95,17 @@ class PhotoReportAndActTests(TestCase):
 
     def test_close_order_succeeds_with_confirmed_readable_act(self):
         self._submit_report()
-        review_photo_report(self.order, self.manager, accepted=True)
+        review_photo_report(
+            self.order, self.manager, accepted=True,
+            manager_act_file=SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf'),
+        )
         self.order.refresh_from_db()
 
-        Act.objects.create(
-            order=self.order, file=SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
-            uploaded_by=self.manager, is_readable_confirmed=True,
+        Act.objects.update_or_create(
+            order=self.order, defaults={
+                'file': SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
+                'uploaded_by': self.manager, 'is_readable_confirmed': True,
+            },
         )
 
         close_order(self.order, self.manager)
@@ -112,11 +125,16 @@ class PhotoReportAndActTests(TestCase):
         from apps.payments.models import PaymentRecord
 
         self._submit_report(additional_works=[{'description': 'Доп. работа', 'price': Decimal('500')}])
-        review_photo_report(self.order, self.manager, accepted=True)
+        review_photo_report(
+            self.order, self.manager, accepted=True,
+            manager_act_file=SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf'),
+        )
         self.order.refresh_from_db()
-        Act.objects.create(
-            order=self.order, file=SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
-            uploaded_by=self.manager, is_readable_confirmed=True,
+        Act.objects.update_or_create(
+            order=self.order, defaults={
+                'file': SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
+                'uploaded_by': self.manager, 'is_readable_confirmed': True,
+            },
         )
         close_order(self.order, self.manager)
 
@@ -129,11 +147,16 @@ class PhotoReportAndActTests(TestCase):
         from apps.payments.services import mark_payment_paid
 
         self._submit_report()
-        review_photo_report(self.order, self.manager, accepted=True)
+        review_photo_report(
+            self.order, self.manager, accepted=True,
+            manager_act_file=SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf'),
+        )
         self.order.refresh_from_db()
-        Act.objects.create(
-            order=self.order, file=SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
-            uploaded_by=self.manager, is_readable_confirmed=True,
+        Act.objects.update_or_create(
+            order=self.order, defaults={
+                'file': SimpleUploadedFile('act.pdf', b'x', content_type='application/pdf'),
+                'uploaded_by': self.manager, 'is_readable_confirmed': True,
+            },
         )
         close_order(self.order, self.manager)
         record = PaymentRecord.objects.get(order=self.order)
@@ -267,11 +290,122 @@ class CollectorAttachesActTests(TestCase):
             order=self.order, collector=self.collector,
             slot_files={self.slot.id: photo}, checked_items=[], comment='Готово',
         )
-        review_photo_report(self.order, self.manager, accepted=True)
+        review_photo_report(
+            self.order, self.manager, accepted=True,
+            manager_act_file=SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf'),
+        )
         self.order.refresh_from_db()
 
         with self.assertRaises(ValueError):
             close_order(self.order, self.manager)
+
+
+class ManagerActRequiredTests(TestCase):
+    """Менеджер обязан прикрепить свой акт при приёме отчёта — это отдельный
+    документ от акта сборщика, сборщик видит его сразу после приёма."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='manager_act', password='x', role=User.Role.MANAGER)
+        self.collector = User.objects.create_user(username='collector_act', password='x', role=User.Role.COLLECTOR)
+        CollectorProfile.objects.create(
+            user=self.collector, full_name='Тест Тестов', birth_date='1990-01-01', birth_place='М',
+            status=CollectorProfile.Status.CONFIRMED,
+        )
+        self.template = PhotoSlotTemplate.objects.create(name='Кухня — акт менеджера')
+        self.slot = PhotoSlotDefinition.objects.create(
+            template=self.template, title='Общий вид', is_required=True, order=0,
+        )
+        self.ft = FurnitureType.objects.create(name='Кухня', photo_slots_template=self.template)
+        self.order = Order.objects.create(
+            furniture_type=self.ft, address='ул. Тестовая, 1', scheduled_at=timezone.now(),
+            deadline_at=timezone.now() + datetime.timedelta(days=1), price=Decimal('10000'),
+            status=Order.Status.PUBLISHED, created_by=self.manager,
+        )
+        book_order(self.order.pk, self.collector)
+        confirm_booking(self.order.pk, self.manager)
+        self.order.refresh_from_db()
+
+        photo = SimpleUploadedFile('slot.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        act_photo = SimpleUploadedFile('act.jpg', b'collector-act-bytes', content_type='image/jpeg')
+        submit_photo_report(
+            order=self.order, collector=self.collector,
+            slot_files={self.slot.id: photo}, checked_items=[], comment='Готово', act_photo=act_photo,
+        )
+
+    def test_accept_without_manager_act_raises(self):
+        with self.assertRaises(ValueError):
+            review_photo_report(self.order, self.manager, accepted=True)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.REPORT_UPLOADED)
+
+    def test_accept_with_manager_act_succeeds(self):
+        manager_act = SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf')
+        review_photo_report(self.order, self.manager, accepted=True, manager_act_file=manager_act)
+        self.order.refresh_from_db()
+
+        self.assertEqual(self.order.status, Order.Status.ACCEPTED)
+        act = Act.objects.get(order=self.order)
+        self.assertTrue(act.manager_act_file)
+        self.assertIsNotNone(act.manager_act_uploaded_at)
+        # акт сборщика и акт менеджера — разные файлы
+        self.assertNotEqual(act.file.name, act.manager_act_file.name)
+
+    def test_view_rejects_accept_without_manager_act_file(self):
+        client = self.client
+        client.force_login(self.manager)
+        response = client.post(reverse('report_review', args=[self.order.pk]), {'action': 'accept'})
+        self.assertEqual(response.status_code, 302)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.REPORT_UPLOADED)
+
+    def test_view_rejects_disallowed_manager_act_extension(self):
+        bad_file = SimpleUploadedFile('act.exe', b'not-an-act', content_type='application/octet-stream')
+        client = self.client
+        client.force_login(self.manager)
+        response = client.post(
+            reverse('report_review', args=[self.order.pk]), {'action': 'accept', 'manager_act_file': bad_file},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.REPORT_UPLOADED)
+
+    def test_view_accepts_with_valid_manager_act(self):
+        manager_act = SimpleUploadedFile('manager_act.png', b'manager-act-bytes', content_type='image/png')
+        client = self.client
+        client.force_login(self.manager)
+        response = client.post(
+            reverse('report_review', args=[self.order.pk]), {'action': 'accept', 'manager_act_file': manager_act},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.ACCEPTED)
+        self.assertTrue(Act.objects.get(order=self.order).manager_act_file)
+
+    def test_reject_does_not_require_manager_act(self):
+        client = self.client
+        client.force_login(self.manager)
+        response = client.post(
+            reverse('report_review', args=[self.order.pk]), {'action': 'reject', 'comment': 'Переснимите'},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.REJECTED_FOR_REWORK)
+
+    def test_collector_sees_manager_act_after_acceptance_before_closure(self):
+        manager_act = SimpleUploadedFile('manager_act.pdf', b'manager-act-bytes', content_type='application/pdf')
+        review_photo_report(self.order, self.manager, accepted=True, manager_act_file=manager_act)
+        self.order.refresh_from_db()
+
+        client = self.client
+        client.force_login(self.collector)
+        response = client.get(reverse('order_detail', args=[self.order.pk]))
+        self.assertContains(response, 'Скачать акт от менеджера')
+
+    def test_collector_does_not_see_manager_act_before_acceptance(self):
+        client = self.client
+        client.force_login(self.collector)
+        response = client.get(reverse('order_detail', args=[self.order.pk]))
+        self.assertNotContains(response, 'Скачать акт от менеджера')
 
 
 class VideoReportTests(TestCase):

@@ -70,11 +70,16 @@ def submit_photo_report(
 
 
 @transaction.atomic
-def review_photo_report(order: Order, manager, accepted: bool, comment: str = ''):
+def review_photo_report(order: Order, manager, accepted: bool, comment: str = '', manager_act_file=None):
+    """manager_act_file: отдельный акт от менеджера — обязателен при приёме отчёта
+    (см. Act.manager_act_file, п. «менеджер тоже должен прикрепить акт»)."""
     report = order.photo_report
     from_status = order.status
 
     if accepted:
+        act = getattr(order, 'act', None)
+        if manager_act_file is None and not (act and act.manager_act_file):
+            raise ValueError('Для приёма отчёта нужно прикрепить акт от менеджера.')
         report.status = PhotoReport.Status.ACCEPTED
         order.status = Order.Status.ACCEPTED
     else:
@@ -88,11 +93,17 @@ def review_photo_report(order: Order, manager, accepted: bool, comment: str = ''
         order=order, from_status=from_status, to_status=order.status, changed_by=manager, comment=comment,
     )
 
+    if accepted and manager_act_file is not None:
+        act, _ = Act.objects.get_or_create(order=order)
+        act.manager_act_file = manager_act_file
+        act.manager_act_uploaded_at = timezone.now()
+        act.save(update_fields=['manager_act_file', 'manager_act_uploaded_at', 'updated_at'])
+
     if order.collector:
         if accepted:
             notify(
                 order.collector, event_type='report_accepted',
-                message=f'Фотоотчёт по заявке #{order.pk} принят.',
+                message=f'Фотоотчёт по заявке #{order.pk} принят. Акт от менеджера доступен для скачивания.',
             )
         else:
             notify(

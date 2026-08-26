@@ -9,7 +9,7 @@ from django.views import View
 from apps.core.mixins import RoleRequiredMixin
 from apps.orders.models import Order
 
-from .forms import ADDITIONAL_WORK_ROWS, DEFAULT_CHECKLIST, ActUploadForm, SlotPhotoForm
+from .forms import ADDITIONAL_WORK_ROWS, DEFAULT_CHECKLIST, ActUploadForm, ManagerActUploadForm, SlotPhotoForm
 from .models import Act
 from .services import close_order, review_photo_report, submit_photo_report
 
@@ -102,8 +102,17 @@ class PhotoReportReviewView(ManagerRequiredMixin, View):
         order = get_object_or_404(Order, pk=pk)
         action = request.POST.get('action')
         if action == 'accept':
-            review_photo_report(order, request.user, accepted=True)
-            messages.success(request, 'Фотоотчёт принят.')
+            form = ManagerActUploadForm(request.POST, request.FILES)
+            if not form.is_valid():
+                messages.error(request, 'Для приёма отчёта нужно прикрепить акт от менеджера (jpg/png/pdf, до 8 МБ).')
+                return redirect('report_review', pk=pk)
+            try:
+                review_photo_report(
+                    order, request.user, accepted=True, manager_act_file=form.cleaned_data['manager_act_file'],
+                )
+                messages.success(request, 'Фотоотчёт принят.')
+            except ValueError as exc:
+                messages.error(request, str(exc))
         else:
             review_photo_report(order, request.user, accepted=False, comment=request.POST.get('comment', ''))
             messages.info(request, 'Фотоотчёт отклонён, отправлен сборщику на доработку.')

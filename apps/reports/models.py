@@ -5,6 +5,7 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 
 VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm']
+MANAGER_ACT_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png']
 
 
 class PhotoSlotTemplate(models.Model):
@@ -116,6 +117,14 @@ class Act(TimeStampedModel):
         'Подтверждена читаемость', default=False,
         help_text='Менеджер подтвердил, что все поля акта заполнены и разборчивы',
     )
+    # Отдельный документ от менеджера (не путать с file — фото акта сборщика).
+    # Обязателен при приёме отчёта (см. services.review_photo_report) — сборщик
+    # видит его сразу после приёма, ещё до закрытия заявки.
+    manager_act_file = models.FileField(
+        'Акт от менеджера', upload_to='acts/manager/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=MANAGER_ACT_EXTENSIONS)],
+    )
+    manager_act_uploaded_at = models.DateTimeField('Дата загрузки акта менеджера', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Акт приёма-передачи'

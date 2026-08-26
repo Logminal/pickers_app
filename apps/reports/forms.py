@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 
-from .models import VIDEO_EXTENSIONS, ChecklistItem, PhotoReport
+from .models import MANAGER_ACT_EXTENSIONS, VIDEO_EXTENSIONS, ChecklistItem, PhotoReport
 
 DEFAULT_CHECKLIST = [
     'Все модули собраны согласно схеме',
@@ -16,6 +16,7 @@ DEFAULT_CHECKLIST = [
 # помимо проверки типа/расширения, ограничиваем и размер.
 MAX_PHOTO_SIZE_MB = 8
 MAX_VIDEO_SIZE_MB = 150
+MAX_MANAGER_ACT_SIZE_MB = 8
 
 
 def _validate_max_size(max_mb):
@@ -87,4 +88,18 @@ class ActUploadForm(forms.Form):
     is_readable_confirmed = forms.BooleanField(
         label='Подтверждаю: акт заполнен по бланку, все поля разборчивы',
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+
+class ManagerActUploadForm(forms.Form):
+    """Отдельный акт от менеджера (не путать с ActUploadForm.act_file — это замена
+    фото сборщика). Обязателен при приёме отчёта, см. services.review_photo_report."""
+
+    manager_act_file = forms.FileField(
+        label='Акт от менеджера',
+        validators=[
+            FileExtensionValidator(allowed_extensions=MANAGER_ACT_EXTENSIONS),
+            _validate_max_size(MAX_MANAGER_ACT_SIZE_MB),
+        ],
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
     )

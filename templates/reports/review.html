@@ -117,8 +117,12 @@
     <div class="section-title">Решение по отчёту</div>
 
     {% if order.status == 'report_uploaded' %}
-        <form method="post" class="review-decision-form" id="review-decision-form">
+        <form method="post" enctype="multipart/form-data" class="review-decision-form" id="review-decision-form">
             {% csrf_token %}
+            <div class="mb-2">
+                <label class="form-label small mb-1" for="manager_act_file">Акт от менеджера (обязателен для приёма) <span class="text-danger">*</span></label>
+                <input type="file" name="manager_act_file" id="manager_act_file" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf" required>
+            </div>
             <div class="review-decision-buttons" id="review-decision-buttons">
                 <button type="submit" name="action" value="accept" class="btn-action btn-action-success">Принять</button>
                 <button type="button" class="btn-action btn-action-outline-danger" id="review-start-reject">Отклонить</button>
@@ -126,12 +130,15 @@
             <div class="review-reject-panel" id="review-reject-panel" hidden>
                 <span class="info-label">Причина отклонения</span>
                 <textarea class="form-control mt-2" name="comment" id="review-reject-reason" placeholder="Что переснять или доделать — сборщик увидит текст целиком" rows="3"></textarea>
-                <button type="submit" name="action" value="reject" class="btn-action btn-action-danger mt-2">Отправить на доработку</button>
+                <button type="submit" name="action" value="reject" class="btn-action btn-action-danger mt-2" formnovalidate>Отправить на доработку</button>
                 <button type="button" class="btn-action btn-action-outline-neutral mt-2" id="review-cancel-reject">Отмена</button>
             </div>
         </form>
     {% elif order.status == 'accepted' or order.status == 'closed' %}
         <div class="review-decision-note review-decision-note-success">Отчёт принят.</div>
+        {% if order.act.manager_act_file %}
+            <a href="{{ order.act.manager_act_file.url }}" target="_blank" class="btn-action btn-action-outline-primary mt-2">Скачать акт от менеджера</a>
+        {% endif %}
     {% elif order.status == 'rejected_for_rework' %}
         <div class="review-decision-note review-decision-note-danger">Отправлено на доработку — сборщик получил уведомление с причиной{% if report.manager_comment %}: «{{ report.manager_comment }}»{% endif %}.</div>
     {% endif %}
